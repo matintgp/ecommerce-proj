@@ -1,0 +1,8 @@
+Django
+djangorestframework
+django-cors-headers
+djangorestframework-simplejwt
+mysqlclient
+python-dotenv
+pillow
+drf-yasg
