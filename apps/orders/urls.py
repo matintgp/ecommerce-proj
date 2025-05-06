@@ -1,7 +1,12 @@
-from django.urls import path
-from .views import OrderViewSet
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views import OrderViewSet, CartViewSet, CouponViewSet
+
+router = DefaultRouter()
+router.register(r'orders', OrderViewSet, basename='order')
+router.register(r'carts', CartViewSet, basename='cart')
+router.register(r'coupons', CouponViewSet, basename='coupon')
 
 urlpatterns = [
-    path('orders/', OrderViewSet.as_view({'get': 'list', 'post': 'create'}), name='order-list'),
-    path('orders/<int:pk>/', OrderViewSet.as_view({'get': 'retrieve', 'put': 'update', 'delete': 'destroy'}), name='order-detail'),
+    path('', include(router.urls)),
 ]

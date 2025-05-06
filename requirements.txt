@@ -6,3 +6,6 @@ mysqlclient
 python-dotenv
 pillow
 drf-yasg
+django-cors-headers
+django-filter
+coreapi
