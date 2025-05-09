@@ -1,6 +1,8 @@
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
+from django.shortcuts import render
+from django.views.generic import TemplateView
+from django.views.decorators.csrf import ensure_csrf_cookie
 
-@api_view(['GET'])
+@ensure_csrf_cookie
 def home(request):
-    return Response({"message": "Welcome to the E-commerce API!"})
+    """Render the Next.js app's index.html"""
+    return render(request, 'index.html')

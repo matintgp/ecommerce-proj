@@ -4,7 +4,7 @@ from .views import OrderViewSet, CartViewSet, CouponViewSet
 
 router = DefaultRouter()
 router.register(r'orders', OrderViewSet, basename='order')
-router.register(r'carts', CartViewSet, basename='cart')
+router.register(r'cart', CartViewSet, basename='cart')
 router.register(r'coupons', CouponViewSet, basename='coupon')
 
 urlpatterns = [
