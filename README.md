@@ -1,7 +1,7 @@
 steps for start project in ur system:
 1. Clone the repository
     ```bash
-    git clone https://github.com/yourusername/ecommerce-drf.git
+    git clone https://github.com/matintgp/ecommerce-proj.git
     cd ecommerce-drf
     ```
 
