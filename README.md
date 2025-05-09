@@ -32,7 +32,7 @@ steps for start project in ur system:
     ```
 
 
-create superuser if needed:
+- create superuser if needed:
     ```bash
     python manage.py createsuperuser
     ```
