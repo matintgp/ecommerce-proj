@@ -3,161 +3,228 @@ from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action, parser_classes
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.exceptions import TokenError
 from django.contrib.auth import authenticate, logout
 from django.shortcuts import get_object_or_404
 from rest_framework.filters import SearchFilter
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
+from django.core.mail import send_mail
+from django.conf import settings
+from django.utils import timezone
+
 
 from .models import User, UserAddress
-from .serializers import UserSerializer, UserAddressSerializer
+from .serializers import *
 
 
-class UserViewSet(viewsets.GenericViewSet):
-    """
-    API endpoints for managing users
-    """
+class UserViewSet(viewsets.GenericViewSet): # API endpoints for managing users
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    parser_classes = (MultiPartParser, FormParser)  # برای پشتیبانی از آپلود فایل
+    parser_classes = (MultiPartParser, FormParser) 
     filter_backends = [SearchFilter]
     search_fields = ['username', 'email']
     swagger_schema_fields = {
         "tags": ["Users"]
     }
+    http_method_names = ['get', 'post', 'put', 'delete']
     
-    def get_permissions(self):
-        # تنظیم دسترسی اندپوینت‌ها
-        if self.action in ['register', 'login', 'get_by_username', 'get_by_email']:
+    def get_permissions(self): 
+        if self.action in ['register', 'login', 'get_by_username', 'get_by_email', 'logout_user']:
             return [permissions.AllowAny()]
         return [permissions.IsAuthenticated()]
     
+    
+    @swagger_auto_schema(
+        operation_summary="Send email verification code",
+        operation_description="Send a verification code to the user's email",
+        request_body=EmailVerificationSerializer
+    )
+    @action(detail=False, methods=['post'], url_path='send-verification')
+    def send_verification_email(self, request):
+        """ارسال کد تایید به ایمیل کاربر"""
+        serializer = EmailVerificationSerializer(data=request.data)
+        
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            
+        email = serializer.validated_data['email']
+        
+        # بررسی اینکه آیا ایمیل قبلاً ثبت شده است
+        if User.objects.filter(email=email).exists():
+            return Response(
+                {"error": "این ایمیل قبلا ثبت شده است"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        # حذف کدهای قبلی برای این ایمیل
+        EmailOTP.objects.filter(email=email).delete()
+        
+        # ایجاد کد OTP جدید
+        otp = EmailOTP(email=email)
+        otp.save()
+        
+        print(f"Generated OTP: {otp.otp_code}") 
+        
+        
+        subject = 'کد تایید ایمیل'
+        message = f'کد تایید شما: {otp.otp_code}\nاین کد تا 10 دقیقه معتبر است.'
+        from_email = settings.DEFAULT_FROM_EMAIL
+        recipient_list = [email]
+        
+        try:
+            send_mail(subject, message, from_email, recipient_list)
+            return Response(
+                {"message": "کد تایید با موفقیت به ایمیل شما ارسال شد", "email": email},
+                status=status.HTTP_200_OK
+            )
+        except Exception as e:
+            return Response(
+                {"error": f"خطا در ارسال ایمیل: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
     @swagger_auto_schema(
         operation_summary="Register a new user",
-        operation_description="Create a new user account with username, email and password"
+        operation_description="Create a new user account with username, email and password",
+        request_body=UserRegistrationSerializer
     )
-    
     @action(detail=False, methods=['post'], url_path='register')
     def register(self, request):
-        """ثبت‌نام کاربر جدید"""
-        serializer = self.get_serializer(data=request.data)
-        if serializer.is_valid():
-            user = serializer.save()
+        """ثبت‌نام کاربر جدید پس از تایید ایمیل"""
+        serializer = UserRegistrationSerializer(data=request.data)
+        
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            
+        email = serializer.validated_data.get('email')
+        otp_code = serializer.validated_data.get('otp_code')
+        
+        try:
+            otp = EmailOTP.objects.filter(
+                email=email,
+                otp_code=otp_code
+            ).latest('created_at')
+            
+            print(f"OTP Code: {otp}")  # Debugging line
+            
+            if timezone.now() > otp.expires_at:
+                return Response(
+                    {"error": "کد تایید منقضی شده است. لطفا دوباره تلاش کنید."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            if otp.otp_code != otp_code:
+                return Response(
+                    {"error": "کد تایید نادرست است"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            otp.is_verified = True
+            otp.save()
+            
+            # ایجاد کاربر جدید
+            user_data = {
+                'username': serializer.validated_data.get('username'),
+                'email': email,
+                'first_name': serializer.validated_data.get('first_name'),
+                'last_name': serializer.validated_data.get('last_name'),
+                'password': serializer.validated_data.get('password')
+            }
+            
+            user = User.objects.create_user(**user_data)
+            user.save()
+            
+            # تولید توکن برای لاگین خودکار
             refresh = RefreshToken.for_user(user)
+            
             return Response({
-                'user': serializer.data,
+                'user': UserSerializer(user).data,
                 'refresh': str(refresh),
                 'access': str(refresh.access_token),
             }, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            
+        except EmailOTP.DoesNotExist:
+            return Response(
+                {"error": "کد تایید نامعتبر است یا قبلا استفاده شده است"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
 
     @swagger_auto_schema(
         operation_summary="User login",
-        operation_description="Login with username and password to get auth tokens"
+        operation_description="Login with username and password to get auth tokens",
+        request_body=UserLoginSerializer
     )
     @action(detail=False, methods=['post'], url_path='login')
     def login(self, request):
-        """ورود کاربر به سیستم"""
-        username = request.data.get('username')
-        password = request.data.get('password')
+        serializer = UserLoginSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        username = serializer.validated_data.get('username')
+        password = serializer.validated_data.get('password')
+        print(f"Username: {username}, Password: {password}")  # Debugging line
         user = authenticate(username=username, password=password)
         
         if user:
             refresh = RefreshToken.for_user(user)
-            serializer = self.get_serializer(user)
+            user_serializer = self.get_serializer(user)
             return Response({
-                'user': serializer.data,
+                'user': user_serializer.data,
                 'refresh': str(refresh),
                 'access': str(refresh.access_token),
             })
         return Response({'error': 'نام کاربری یا رمز عبور اشتباه است'}, status=status.HTTP_401_UNAUTHORIZED)
     
+    
     @swagger_auto_schema(
         operation_summary="User logout",
-        operation_description="Logout the current user"
+        operation_description="Logout the current user",
+        request_body=UserLogoutSerializer
     )
     @action(detail=False, methods=['post'], url_path='logout')
     def logout_user(self, request):
-        """خروج کاربر از سیستم"""
-        logout(request)
-        return Response({"message": "با موفقیت از سیستم خارج شدید."}, status=status.HTTP_200_OK)
-    
+        serializer = UserLogoutSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        # refresh_token = serializer.validated_data.get('refresh')
+        # try:
+            # token = RefreshToken(refresh_token)
+            # token.blacklist()
+        return Response({"message": "با موفقیت از سیستم خارج شدید."}, status=status.HTTP_205_RESET_CONTENT)
+        # except TokenError:
+        #     return Response({"error": "توکن نامعتبر است."}, status=status.HTTP_400_BAD_REQUEST)
+                            
+
+
     @swagger_auto_schema(
         operation_summary="Get user profile",
-        operation_description="Get the profile of the currently logged in user"
+        operation_description="Get the profile of the currently logged in user",
     )
     @action(detail=False, methods=['get'], url_path='profile')
     def profile(self, request):
-        """دریافت پروفایل کاربر"""
         serializer = self.get_serializer(request.user)
         return Response(serializer.data)
     
-    # تغییر این قسمت برای رفع خطا - متدها را جدا کنید
+    
     @swagger_auto_schema(
         method="put",
         operation_summary="Update user profile",
-        operation_description="Update the profile of the currently logged in user (PUT)"
+        operation_description="Update the currently logged in user's profile (PUT)",
+        request_body=UserUpdateSerializer
     )
     @swagger_auto_schema(
         method="patch",
         operation_summary="Partial update user profile",
-        operation_description="Update part of the profile of the currently logged in user (PATCH)"
+        operation_description="Update part of the currently logged in user's profile (PATCH)",
+        request_body=UserUpdateSerializer
     )
-    @action(detail=False, methods=['put', 'patch'], url_path='profile')
+    @action(detail=False, methods=['put', 'patch'], url_path='profile/update')
     def update_profile(self, request):
-        """بروزرسانی پروفایل کاربر"""
-        serializer = self.get_serializer(request.user, data=request.data, partial=request.method == "PATCH")
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
-    @swagger_auto_schema(
-        operation_summary="Get user by ID",
-        operation_description="Get detailed information about a user by their ID"
-    )
-    @action(detail=True, methods=['get'], url_path='')
-    def get_by_id(self, request, pk=None):
-        """دریافت کاربر براساس شناسه"""
-        user = self.get_object()
-        serializer = self.get_serializer(user)
-        return Response(serializer.data)
-    
-    @swagger_auto_schema(
-        operation_summary="Delete user by ID",
-        operation_description="Delete a user account by ID"
-    )
-    @action(detail=True, methods=['delete'], url_path='')
-    def delete_user(self, request, pk=None):
-        """حذف کاربر براساس شناسه"""
-        user = self.get_object()
-        user.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
-    
-    
-    @swagger_auto_schema(
-        method="put",
-        operation_summary="Update user by ID",
-        operation_description="Update an existing user by ID (PUT)"
-    )
-    @swagger_auto_schema(
-        method="patch",
-        operation_summary="Partial update user by ID",
-        operation_description="Update part of an existing user by ID (PATCH)"
-    )
-    @action(detail=True, methods=['put', 'patch'], url_path='')
-    def update_user(self, request, pk=None):
-        """بروزرسانی کاربر با شناسه مشخص"""
-        user = self.get_object()
+        user = request.user
         
-        # بررسی دسترسی - فقط خود کاربر یا ادمین می‌تواند ویرایش کند
-        if not (request.user.is_staff or request.user.id == user.id):
-            return Response(
-                {"error": "شما دسترسی لازم برای ویرایش این کاربر را ندارید."},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        
-        serializer = self.get_serializer(
+        serializer = UserUpdateSerializer(
             user, 
             data=request.data, 
             partial=request.method == "PATCH"
@@ -169,44 +236,15 @@ class UserViewSet(viewsets.GenericViewSet):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     
-    @swagger_auto_schema(
-        operation_summary="Get user by username",
-        operation_description="Find a user by their username",
-        manual_parameters=[
-            openapi.Parameter('username', openapi.IN_PATH, description="Username to search for", type=openapi.TYPE_STRING),
-        ]
-    )
-    @action(detail=False, methods=['get'], url_path='username/(?P<username>[^/.]+)')
-    def get_by_username(self, request, username=None):
-        """دریافت کاربر براساس نام کاربری"""
-        user = get_object_or_404(User, username=username)
-        serializer = self.get_serializer(user)
-        return Response(serializer.data)
-    
-    @swagger_auto_schema(
-        operation_summary="Get user by email",
-        operation_description="Find a user by their email address",
-        manual_parameters=[
-            openapi.Parameter('email', openapi.IN_PATH, description="Email to search for", type=openapi.TYPE_STRING),
-        ]
-    )
-    @action(detail=False, methods=['get'], url_path='email/(?P<email>[^/.]+)')
-    def get_by_email(self, request, email=None):
-        """دریافت کاربر براساس ایمیل"""
-        user = get_object_or_404(User, email=email)
-        serializer = self.get_serializer(user)
-        return Response(serializer.data)
 
 
-class UserAddressViewSet(viewsets.GenericViewSet):
-    """
-    API endpoints for managing user addresses
-    """
+class UserAddressViewSet(viewsets.GenericViewSet): # API endpoints for managing user addresses
     serializer_class = UserAddressSerializer
     permission_classes = [permissions.IsAuthenticated]
     swagger_schema_fields = {
         "tags": ["Addresses"]
     }
+    
 
     def get_queryset(self):
         # Avoid error when generating Swagger docs
@@ -238,7 +276,6 @@ class UserAddressViewSet(viewsets.GenericViewSet):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-    # تغییر این قسمت برای رفع خطا - متدها را جدا کنید
     @swagger_auto_schema(
         method="put",
         operation_summary="Update address",

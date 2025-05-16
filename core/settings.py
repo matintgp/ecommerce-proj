@@ -30,6 +30,8 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
     'corsheaders',
     'django_filters',
+    "rest_framework_simplejwt",
+    "rest_framework_simplejwt.token_blacklist",
     
     # Local apps
     'apps.accounts',
@@ -156,9 +158,20 @@ CORS_ALLOWED_ORIGINS = [
     # Add your production domain here
 ]
 
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'mtt584388@gmail.com'  
+EMAIL_HOST_PASSWORD = 'chcz rdmz qhtn natj'  
+DEFAULT_FROM_EMAIL = 'mtt584388@gmail.com'
+
+
 # For production, consider adding:
 if not DEBUG:
     CSRF_COOKIE_SECURE = True
     SESSION_COOKIE_SECURE = True
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
+    

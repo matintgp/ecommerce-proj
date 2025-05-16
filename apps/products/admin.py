@@ -1,9 +1,42 @@
 from django.contrib import admin
-from .models import Product, Category, ProductImage, Review, Wishlist
+from .models import *
 
 class ProductImageInline(admin.TabularInline):
     model = ProductImage
     extra = 1  # Number of empty forms to display
+
+
+
+@admin.register(Color)
+class ColorAdmin(admin.ModelAdmin):
+    list_display = ('name', 'color_code')
+    search_fields = ('name',)
+    prepopulated_fields = {'slug': ('name',)}
+
+@admin.register(Size)
+class SizeAdmin(admin.ModelAdmin):
+    list_display = ('name',)
+    search_fields = ('name',)
+    prepopulated_fields = {'slug': ('name',)}
+    
+@admin.register(Brand)
+class BrandAdmin(admin.ModelAdmin):
+    list_display = ('name',)
+    search_fields = ('name',)
+    prepopulated_fields = {'slug': ('name',)}
+
+@admin.register(Gender)
+class GenderAdmin(admin.ModelAdmin):
+    list_display = ('name',)
+    search_fields = ('name',)
+    prepopulated_fields = {'slug': ('name',)}
+
+@admin.register(Specification)
+class SpecificationAdmin(admin.ModelAdmin):
+    list_display = ('product', 'name', 'value')
+    list_filter = ('product',)
+    search_fields = ('product__name', 'name')
+    ordering = ('product',)
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):

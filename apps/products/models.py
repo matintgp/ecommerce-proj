@@ -28,8 +28,65 @@ class Category(models.Model):
     def __str__(self):
         return self.name
 
+class Gender(models.Model):
+    name = models.CharField(max_length=50)
+    slug = models.SlugField(unique=True)
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            # Auto-generate slug from name if slug is not provided
+            self.slug = slugify(self.name)
+        super().save(*args, **kwargs)
+
+class Color(models.Model):
+    color_code = models.CharField(max_length=14)
+    name = models.CharField(max_length=50)
+    slug = models.SlugField(unique=True)
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            # Auto-generate slug from name if slug is not provided
+            self.slug = slugify(self.name)  
+        super().save(*args, **kwargs)      
+    
+class Size(models.Model):
+    name = models.CharField(max_length=50)
+    slug = models.SlugField(unique=True)
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            # Auto-generate slug from name if slug is not provided
+            self.slug = slugify(self.name)
+        super().save(*args, **kwargs)
+        
+class Brand(models.Model):
+    name = models.CharField(max_length=100)
+    slug = models.SlugField(unique=True)
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            # Auto-generate slug from name if slug is not provided
+            self.slug = slugify(self.name)
+        super().save(*args, **kwargs)
+    
+
+class Specification(models.Model):
+    product = models.ForeignKey('Product', on_delete=models.CASCADE, related_name='specifications')
+    name = models.CharField(max_length=100)
+    value = models.CharField(max_length=200)
+
+    def __str__(self):
+        return f"{self.product.name} - {self.name}: {self.value}"
+    
+    
+
 class Product(models.Model):
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='products')
+    gender = models.ForeignKey(Gender, on_delete=models.CASCADE, related_name='products')
+    brand = models.ForeignKey(Brand, on_delete=models.CASCADE, related_name='products')
+    size = models.ForeignKey(Size, on_delete=models.CASCADE, related_name='products')
+    color = models.ForeignKey(Color, on_delete=models.CASCADE, related_name='products')
+    
     name = models.CharField(max_length=200)
     slug = models.SlugField(unique=True)
     description = models.TextField()
@@ -52,10 +109,9 @@ class Product(models.Model):
             counter += 1
             
         super().save(*args, **kwargs)
+    
     def __str__(self):
         return self.name
-
-
 
 class ProductImage(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='images')
@@ -67,7 +123,6 @@ class ProductImage(models.Model):
     def __str__(self):
         return f"{self.product.name} - {self.alt_text}"
     
-
 class Review(models.Model):
     RATING_CHOICES = [(i, str(i)) for i in range(1, 6)]  # 1-5 star rating
     
