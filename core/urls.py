@@ -7,9 +7,27 @@ from drf_yasg import openapi
 from rest_framework.documentation import include_docs_urls
 from django.conf import settings
 from django.conf.urls.static import static
+from drf_yasg.utils import swagger_auto_schema
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from drf_yasg.generators import OpenAPISchemaGenerator
+
 
 from .views import home
 
+
+
+class CustomOpenAPISchemaGenerator(OpenAPISchemaGenerator):
+    def get_schema(self, request=None, public=False):
+        schema = super().get_schema(request, public)
+        schema.security_definitions = {
+            'Bearer': {
+                'type': 'apiKey',
+                'name': 'Authorization',
+                'in': 'header',
+                'description': 'JWT Format: "Bearer your_token"'
+            }
+        }
+        return schema
 
 schema_view = get_schema_view(
    openapi.Info(
@@ -18,13 +36,16 @@ schema_view = get_schema_view(
       description="API documentation for Uni e-commerce project",
    ),
    public=True,
-   permission_classes=(permissions.AllowAny,),  # Keep this as AllowAny
+   permission_classes=(permissions.AllowAny,),
+   authentication_classes=[],
    patterns=[
        path('api/accounts/', include('apps.accounts.urls')),
        path('api/products/', include('apps.products.urls')),
        path('api/orders/', include('apps.orders.urls')),
    ],
+   generator_class=CustomOpenAPISchemaGenerator
 )
+
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -41,6 +62,9 @@ urlpatterns = [
     path('api-auth/', include('rest_framework.urls')),
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
     path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
+    
+    path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -1,14 +1,14 @@
-# settings.py
-
 import os
 from pathlib import Path
 from datetime import timedelta
+from django.conf import settings
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'your-secret-key'
+SECRET_KEY = 'django-insecure-4@#)6&!$@^@!3g1v2z5j0x7q8h3b9z1&*4$@!3g1v2z5j0x7q8h3b9z1&*4$@!3g1v2z5j0x7q8h3b9z1&*4$@!3g1v2z5j0x7q8h3b9z1&*4$@!3g1v2z5j0x7q8h3b9z1&*4$@!3g1v2z5j0x7q8h3b9z1&*4$@!3g1v2z5j0x7q8h3b9z1&*4$@!3g1v2z5j0x7q8h3b9z1&*4$@!3g1v2z5j0x7q8h3b9z1&*4$@!3g1v2z5j0x7q8h3b9z1&*4$@!3g1v2z5j0x7q8h3b9z1&*4$@!'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -124,19 +124,16 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 #  Django Rest Framework settings
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
         'rest_framework.authentication.TokenAuthentication',
         'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.BasicAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 10,
-    # 'DEFAULT_FILTER_BACKENDS': [
-    #     'django_filters.rest_framework.DjangoFilterBackend',
-    #     'rest_framework.filters.SearchFilter',
-    #     'rest_framework.filters.OrderingFilter',
-    # ],
     'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.coreapi.AutoSchema',
 }
 
@@ -144,7 +141,29 @@ REST_FRAMEWORK = {
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'ROTATE_REFRESH_TOKENS': False,
+    'BLACKLIST_AFTER_ROTATION': False,
+    'UPDATE_LAST_LOGIN': False,
+
+    'ALGORITHM': 'HS256',
+    'SIGNING_KEY': SECRET_KEY,
+    'VERIFYING_KEY': None,
+    'AUDIENCE': None,
+    'ISSUER': None,
+    
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
+    'USER_ID_FIELD': 'id',
+    'USER_ID_CLAIM': 'user_id',
+    'USER_AUTHENTICATION_RULE': 'rest_framework_simplejwt.authentication.default_user_authentication_rule',
+
+    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
+    'TOKEN_TYPE_CLAIM': 'token_type',
+    'TOKEN_USER_CLASS': 'rest_framework_simplejwt.models.TokenUser',
+
+    'JTI_CLAIM': 'jti',
 }
+
 
 # CSRF settings for Next.js integration
 CSRF_COOKIE_SAMESITE = 'Lax'  # or 'None' if using cross-site requests with HTTPS

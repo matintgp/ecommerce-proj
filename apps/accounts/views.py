@@ -30,7 +30,7 @@ class UserViewSet(viewsets.GenericViewSet): # API endpoints for managing users
     http_method_names = ['get', 'post', 'put', 'delete']
     
     def get_permissions(self): 
-        if self.action in ['register', 'login', 'get_by_username', 'get_by_email', 'logout_user']:
+        if self.action in ['register', 'login', 'logout_user']:
             return [permissions.AllowAny()]
         return [permissions.IsAuthenticated()]
     

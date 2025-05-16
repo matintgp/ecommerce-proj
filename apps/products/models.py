@@ -37,6 +37,9 @@ class Gender(models.Model):
             # Auto-generate slug from name if slug is not provided
             self.slug = slugify(self.name)
         super().save(*args, **kwargs)
+    
+    def __str__(self):
+        return self.name
 
 class Color(models.Model):
     color_code = models.CharField(max_length=14)
@@ -49,6 +52,9 @@ class Color(models.Model):
             self.slug = slugify(self.name)  
         super().save(*args, **kwargs)      
     
+    def __str__(self):
+        return self.name
+    
 class Size(models.Model):
     name = models.CharField(max_length=50)
     slug = models.SlugField(unique=True)
@@ -58,6 +64,9 @@ class Size(models.Model):
             # Auto-generate slug from name if slug is not provided
             self.slug = slugify(self.name)
         super().save(*args, **kwargs)
+    
+    def __str__(self):
+        return self.name
         
 class Brand(models.Model):
     name = models.CharField(max_length=100)
@@ -69,6 +78,9 @@ class Brand(models.Model):
             self.slug = slugify(self.name)
         super().save(*args, **kwargs)
     
+    def __str__(self):
+        return self.name
+    
 
 class Specification(models.Model):
     product = models.ForeignKey('Product', on_delete=models.CASCADE, related_name='specifications')
@@ -77,6 +89,7 @@ class Specification(models.Model):
 
     def __str__(self):
         return f"{self.product.name} - {self.name}: {self.value}"
+
     
     
 
@@ -84,8 +97,8 @@ class Product(models.Model):
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='products')
     gender = models.ForeignKey(Gender, on_delete=models.CASCADE, related_name='products')
     brand = models.ForeignKey(Brand, on_delete=models.CASCADE, related_name='products')
-    size = models.ForeignKey(Size, on_delete=models.CASCADE, related_name='products')
-    color = models.ForeignKey(Color, on_delete=models.CASCADE, related_name='products')
+    size = models.ManyToManyField(Size, related_name='products')
+    color = models.ManyToManyField(Color, related_name='products')
     
     name = models.CharField(max_length=200)
     slug = models.SlugField(unique=True)

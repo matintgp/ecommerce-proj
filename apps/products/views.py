@@ -7,16 +7,13 @@ from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 
 
-class ProductImageViewSet(viewsets.ModelViewSet):
-    queryset = ProductImage.objects.all()
-    serializer_class = ProductImageSerializer
-    http_method_names = ['get']
 
 
 class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
     http_method_names = ['get']
+    lookup_field = 'slug'
     
     @swagger_auto_schema(
         tags=["Products"],
@@ -40,6 +37,7 @@ class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
     http_method_names = ['get']
+    lookup_field = 'slug'
     
     @swagger_auto_schema(
         tags=['Categories'],
@@ -56,6 +54,8 @@ class CategoryViewSet(viewsets.ModelViewSet):
     )
     def retrieve(self, request, *args, **kwargs):
         return super().retrieve(request, *args, **kwargs)
+
+    
 
 
 

@@ -6,6 +6,11 @@ class ProductImageInline(admin.TabularInline):
     extra = 1  # Number of empty forms to display
 
 
+class SpecificationInline(admin.TabularInline):
+    model = Specification
+    extra = 1
+
+
 
 @admin.register(Color)
 class ColorAdmin(admin.ModelAdmin):
@@ -31,6 +36,8 @@ class GenderAdmin(admin.ModelAdmin):
     search_fields = ('name',)
     prepopulated_fields = {'slug': ('name',)}
 
+
+
 @admin.register(Specification)
 class SpecificationAdmin(admin.ModelAdmin):
     list_display = ('product', 'name', 'value')
@@ -45,7 +52,7 @@ class ProductAdmin(admin.ModelAdmin):
     search_fields = ('name', 'description')
     prepopulated_fields = {'slug': ('name',)} 
     ordering = ('-created_at',)
-    inlines = [ProductImageInline]  # This enables adding images directly in the product admin form
+    inlines = [ProductImageInline, SpecificationInline]
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):

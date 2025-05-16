@@ -56,10 +56,10 @@ class ProductSerializer(serializers.ModelSerializer):
         queryset=Gender.objects.all(), slug_field='slug', read_only=False
     )
     size = serializers.SlugRelatedField(
-        queryset=Size.objects.all(), slug_field='slug', read_only=False
+        queryset=Size.objects.all(), slug_field='slug', many=True, read_only=False  # اصلاح این خط
     )
     color = serializers.SlugRelatedField(
-        queryset=Color.objects.all(), slug_field='slug', read_only=False
+        queryset=Color.objects.all(), slug_field='slug', many=True, read_only=False  # اصلاح این خط
     )
     images = ProductImageSerializer(many=True, read_only=True)
 
