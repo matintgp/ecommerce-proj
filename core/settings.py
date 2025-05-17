@@ -28,7 +28,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'drf_yasg',
     'rest_framework.authtoken',
-    'corsheaders',
+    # 'corsheaders',
     'django_filters',
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
@@ -170,12 +170,12 @@ CSRF_COOKIE_SAMESITE = 'Lax'  # or 'None' if using cross-site requests with HTTP
 CSRF_COOKIE_HTTPONLY = False  # Allow JavaScript access to the CSRF token
 CSRF_TRUSTED_ORIGINS = ['http://localhost:3000']  # Add your Next.js development server
 
-# CORS settings if your Next.js app is served separately in development
-CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOWED_ORIGINS = [
-    'http://localhost:3000',  # Next.js development server
-    # Add your production domain here
-]
+# # CORS settings if your Next.js app is served separately in development
+# CORS_ALLOW_CREDENTIALS = True
+# CORS_ALLOWED_ORIGINS = [
+#     'http://localhost:3000',  # Next.js development server
+#     # Add your production domain here
+# ]
 
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'

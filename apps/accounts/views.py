@@ -30,7 +30,7 @@ class UserViewSet(viewsets.GenericViewSet): # API endpoints for managing users
     http_method_names = ['get', 'post', 'put', 'delete']
     
     def get_permissions(self): 
-        if self.action in ['register', 'login', 'logout_user']:
+        if self.action in ['register', 'login', 'logout_user', "send_verification_email"]:
             return [permissions.AllowAny()]
         return [permissions.IsAuthenticated()]
     
@@ -201,6 +201,7 @@ class UserViewSet(viewsets.GenericViewSet): # API endpoints for managing users
     @swagger_auto_schema(
         operation_summary="Get user profile",
         operation_description="Get the profile of the currently logged in user",
+        security=[{'Bearer': []}], 
     )
     @action(detail=False, methods=['get'], url_path='profile')
     def profile(self, request):
@@ -212,13 +213,15 @@ class UserViewSet(viewsets.GenericViewSet): # API endpoints for managing users
         method="put",
         operation_summary="Update user profile",
         operation_description="Update the currently logged in user's profile (PUT)",
-        request_body=UserUpdateSerializer
+        request_body=UserUpdateSerializer,
+        security=[{'Bearer': []}],
     )
     @swagger_auto_schema(
         method="patch",
         operation_summary="Partial update user profile",
         operation_description="Update part of the currently logged in user's profile (PATCH)",
-        request_body=UserUpdateSerializer
+        request_body=UserUpdateSerializer,
+        security=[{'Bearer': []}],
     )
     @action(detail=False, methods=['put', 'patch'], url_path='profile/update')
     def update_profile(self, request):

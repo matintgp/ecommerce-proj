@@ -49,24 +49,28 @@ class ProductSerializer(serializers.ModelSerializer):
     category_id = serializers.PrimaryKeyRelatedField(
         queryset=Category.objects.all(), source='category', write_only=True
     )
-    brand = serializers.SlugRelatedField(
-        queryset=Brand.objects.all(), slug_field='slug', read_only=False
-    )
-    gender = serializers.SlugRelatedField(
-        queryset=Gender.objects.all(), slug_field='slug', read_only=False
-    )
-    size = serializers.SlugRelatedField(
-        queryset=Size.objects.all(), slug_field='slug', many=True, read_only=False  # اصلاح این خط
-    )
-    color = serializers.SlugRelatedField(
-        queryset=Color.objects.all(), slug_field='slug', many=True, read_only=False  # اصلاح این خط
-    )
+    
+    brand = BrandSerializer(read_only=True)
+    gender = GenderSerializer(read_only=True)
+    sizes = SizeSerializer(many=True, read_only=True, source='size')
+    colors = ColorSerializer(many=True, read_only=True)
+    specifications = SpecificationSerializer(many=True, read_only=True)
     images = ProductImageSerializer(many=True, read_only=True)
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        
+        try:
+            data['price'] = int(float(data['price']))
+            data['price_with_commas'] = "{:,.0f}".format(data['price'])
+        except (ValueError, TypeError):
+            pass
+        return data
 
     class Meta:
         model = Product
         fields = ['id', 'name', 'slug', 'description', 'price', 'stock', 'is_active', 
-                  'category', 'category_id', 'brand', 'gender', 'size', 'color',
+                  'category', 'category_id', 'brand', 'gender', 'sizes', 'colors', 'specifications',
                   'images', 'created_at', 'updated_at']
         read_only_fields = ['id', 'slug', 'created_at', 'updated_at']
         
@@ -86,10 +90,5 @@ class WishlistSerializer(serializers.ModelSerializer):
     class Meta:
         model = Wishlist
         fields = ['id', 'product', 'product_details', 'added_at']
-    
-class BrandSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Brand
-        fields = ['id', 'name', 'slug']
-        read_only_fields = ['id', 'slug']
+
         

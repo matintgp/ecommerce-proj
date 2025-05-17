@@ -14,6 +14,7 @@ class ProductViewSet(viewsets.ModelViewSet):
     serializer_class = ProductSerializer
     http_method_names = ['get']
     lookup_field = 'slug'
+    permission_classes = [permissions.AllowAny]
     
     @swagger_auto_schema(
         tags=["Products"],
@@ -38,6 +39,7 @@ class CategoryViewSet(viewsets.ModelViewSet):
     serializer_class = CategorySerializer
     http_method_names = ['get']
     lookup_field = 'slug'
+    permission_classes = [permissions.AllowAny]
     
     @swagger_auto_schema(
         tags=['Categories'],
@@ -65,6 +67,7 @@ class BrandViewSet(viewsets.ModelViewSet):
     queryset = Brand.objects.all()
     serializer_class = BrandSerializer
     http_method_names = ['get']
+    permission_classes = [permissions.AllowAny]
     
     @swagger_auto_schema(
         tags=['Brands'],
@@ -89,6 +92,7 @@ class ReviewViewSet(viewsets.ModelViewSet):
     filterset_fields = ['product', 'rating']
     search_fields = ['title', 'comment']
     http_method_names = ['get', 'post', 'delete']
+    
     
     @swagger_auto_schema(
         tags=["Reviews"],

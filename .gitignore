@@ -1,6 +1,4 @@
 /venv
 *.sqlite3
 /media
-*.log
 .idea
-db.sqlite3
