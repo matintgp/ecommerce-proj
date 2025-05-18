@@ -165,6 +165,35 @@ SIMPLE_JWT = {
 }
 
 
+SWAGGER_SETTINGS = {
+    'SECURITY_DEFINITIONS': {
+        'Bearer': {
+            'type': 'apiKey',
+            'name': 'Authorization',
+            'in': 'header',
+            'description': "JWT Format: \"Bearer <token>\""
+        }
+    },
+    'DEFAULT_MODEL_RENDERING': 'example',
+    'USE_SESSION_AUTH': False, # اگر فقط از توکن استفاده می‌کنید
+    # این بخش مهم است:
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+    # با تنظیم این، drf-yasg سعی می‌کند به طور خودکار security را بر اساس permission_classes اعمال کند
+    'AUTO_SCHEMA_TYPE_INSPECTORS': [
+        'drf_yasg.inspectors.SwaggerAutoSchema',
+        'drf_yasg.inspectors.CoreAPICompatInspector',
+    ],
+    'DEFAULT_AUTO_SCHEMA_CLASS': 'drf_yasg.inspectors.SwaggerAutoSchema',
+    "DEFAULT_TAGS": []
+}
+
+
+
 # CSRF settings for Next.js integration
 CSRF_COOKIE_SAMESITE = 'Lax'  # or 'None' if using cross-site requests with HTTPS
 CSRF_COOKIE_HTTPONLY = False  # Allow JavaScript access to the CSRF token

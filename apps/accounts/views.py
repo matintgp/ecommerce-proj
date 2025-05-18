@@ -23,10 +23,7 @@ class UserViewSet(viewsets.GenericViewSet): # API endpoints for managing users
     serializer_class = UserSerializer
     parser_classes = (MultiPartParser, FormParser) 
     filter_backends = [SearchFilter]
-    search_fields = ['username', 'email']
-    swagger_schema_fields = {
-        "tags": ["Users"]
-    }
+    search_fields = ['username']
     http_method_names = ['get', 'post', 'put', 'delete']
     
     def get_permissions(self): 
@@ -38,7 +35,8 @@ class UserViewSet(viewsets.GenericViewSet): # API endpoints for managing users
     @swagger_auto_schema(
         operation_summary="Send email verification code",
         operation_description="Send a verification code to the user's email",
-        request_body=EmailVerificationSerializer
+        request_body=EmailVerificationSerializer,
+        tags=['Users']
     )
     @action(detail=False, methods=['post'], url_path='send-verification')
     def send_verification_email(self, request):
@@ -87,7 +85,8 @@ class UserViewSet(viewsets.GenericViewSet): # API endpoints for managing users
     @swagger_auto_schema(
         operation_summary="Register a new user",
         operation_description="Create a new user account with username, email and password",
-        request_body=UserRegistrationSerializer
+        request_body=UserRegistrationSerializer,
+        tags=['Users']
     )
     @action(detail=False, methods=['post'], url_path='register')
     def register(self, request):
@@ -153,7 +152,8 @@ class UserViewSet(viewsets.GenericViewSet): # API endpoints for managing users
     @swagger_auto_schema(
         operation_summary="User login",
         operation_description="Login with username and password to get auth tokens",
-        request_body=UserLoginSerializer
+        request_body=UserLoginSerializer,
+        tags=['Users']
     )
     @action(detail=False, methods=['post'], url_path='login')
     def login(self, request):
@@ -180,7 +180,8 @@ class UserViewSet(viewsets.GenericViewSet): # API endpoints for managing users
     @swagger_auto_schema(
         operation_summary="User logout",
         operation_description="Logout the current user",
-        request_body=UserLogoutSerializer
+        request_body=UserLogoutSerializer,
+        tags=['Users']
     )
     @action(detail=False, methods=['post'], url_path='logout')
     def logout_user(self, request):
@@ -201,7 +202,7 @@ class UserViewSet(viewsets.GenericViewSet): # API endpoints for managing users
     @swagger_auto_schema(
         operation_summary="Get user profile",
         operation_description="Get the profile of the currently logged in user",
-        security=[{'Bearer': []}], 
+        tags=['Users']
     )
     @action(detail=False, methods=['get'], url_path='profile')
     def profile(self, request):
@@ -214,14 +215,14 @@ class UserViewSet(viewsets.GenericViewSet): # API endpoints for managing users
         operation_summary="Update user profile",
         operation_description="Update the currently logged in user's profile (PUT)",
         request_body=UserUpdateSerializer,
-        security=[{'Bearer': []}],
+        tags=['Users']
     )
     @swagger_auto_schema(
         method="patch",
         operation_summary="Partial update user profile",
         operation_description="Update part of the currently logged in user's profile (PATCH)",
         request_body=UserUpdateSerializer,
-        security=[{'Bearer': []}],
+        tags=['Users']
     )
     @action(detail=False, methods=['put', 'patch'], url_path='profile/update')
     def update_profile(self, request):
@@ -244,10 +245,7 @@ class UserViewSet(viewsets.GenericViewSet): # API endpoints for managing users
 class UserAddressViewSet(viewsets.GenericViewSet): # API endpoints for managing user addresses
     serializer_class = UserAddressSerializer
     permission_classes = [permissions.IsAuthenticated]
-    swagger_schema_fields = {
-        "tags": ["Addresses"]
-    }
-    
+    parser_classes = (MultiPartParser, FormParser) 
 
     def get_queryset(self):
         # Avoid error when generating Swagger docs
@@ -257,7 +255,8 @@ class UserAddressViewSet(viewsets.GenericViewSet): # API endpoints for managing 
     
     @swagger_auto_schema(
         operation_summary="Get all addresses",
-        operation_description="Get all addresses for the current user"
+        operation_description="Get all addresses for the current user",
+        tags=['User Addresses']
     )
     @action(detail=False, methods=['get'], url_path='')
     def list_addresses(self, request):
@@ -268,7 +267,8 @@ class UserAddressViewSet(viewsets.GenericViewSet): # API endpoints for managing 
     
     @swagger_auto_schema(
         operation_summary="Add new address",
-        operation_description="Add a new address for the current user"
+        operation_description="Add a new address for the current user",
+        tags=['User Addresses']
     )
     @action(detail=False, methods=['post'], url_path='')
     def add_address(self, request):
@@ -282,12 +282,14 @@ class UserAddressViewSet(viewsets.GenericViewSet): # API endpoints for managing 
     @swagger_auto_schema(
         method="put",
         operation_summary="Update address",
-        operation_description="Update an existing address (PUT)"
+        operation_description="Update an existing address (PUT)",
+        tags=['User Addresses']
     )
     @swagger_auto_schema(
         method="patch",
         operation_summary="Partial update address",
-        operation_description="Update part of an existing address (PATCH)"
+        operation_description="Update part of an existing address (PATCH)",
+        tags=['User Addresses']
     )
     @action(detail=True, methods=['put', 'patch'], url_path='')
     def update_address(self, request, pk=None):
@@ -301,7 +303,8 @@ class UserAddressViewSet(viewsets.GenericViewSet): # API endpoints for managing 
     
     @swagger_auto_schema(
         operation_summary="Delete address",
-        operation_description="Delete an address by ID"
+        operation_description="Delete an address by ID",
+        tags=['User Addresses']
     )
     @action(detail=True, methods=['delete'], url_path='')
     def delete_address(self, request, pk=None):

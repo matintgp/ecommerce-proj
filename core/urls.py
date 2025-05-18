@@ -16,18 +16,10 @@ from .views import home
 
 
 
-class CustomOpenAPISchemaGenerator(OpenAPISchemaGenerator):
-    def get_schema(self, request=None, public=False):
-        schema = super().get_schema(request, public)
-        schema.security_definitions = {
-            'Bearer': {
-                'type': 'apiKey',
-                'name': 'Authorization',
-                'in': 'header',
-                'description': 'JWT Format: "Bearer your_token"'
-            }
-        }
-        return schema
+# class CustomOpenAPISchemaGenerator(OpenAPISchemaGenerator):
+#     def get_schema(self, request=None, public=False):
+#         schema = super().get_schema(request, public)
+#         return schema
 
 schema_view = get_schema_view(
    openapi.Info(
@@ -38,12 +30,12 @@ schema_view = get_schema_view(
    public=True,
    permission_classes=(permissions.AllowAny,),
    authentication_classes=[],
-   patterns=[
-       path('api/accounts/', include('apps.accounts.urls')),
-       path('api/products/', include('apps.products.urls')),
-       path('api/orders/', include('apps.orders.urls')),
-   ],
-   generator_class=CustomOpenAPISchemaGenerator
+#    patterns=[
+#        path('api/accounts/', include('apps.accounts.urls')),
+#        path('api/products/', include('apps.products.urls')),
+#        path('api/orders/', include('apps.orders.urls')),
+#    ],
+   generator_class=OpenAPISchemaGenerator
 )
 
 

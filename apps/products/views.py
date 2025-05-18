@@ -60,8 +60,6 @@ class CategoryViewSet(viewsets.ModelViewSet):
     
 
 
-
-
     
 class BrandViewSet(viewsets.ModelViewSet):
     queryset = Brand.objects.all()

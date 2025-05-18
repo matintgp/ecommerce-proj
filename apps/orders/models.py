@@ -23,6 +23,8 @@ class Order(models.Model):
     # Payment information
     payment_method = models.CharField(max_length=50)
     payment_status = models.CharField(max_length=20, default='pending')
+    transaction_id = models.CharField(max_length=100, blank=True, null=True)
+    payment_date = models.DateTimeField(blank=True, null=True)
     
     # Order totals
     subtotal = models.DecimalField(max_digits=10, decimal_places=2)
