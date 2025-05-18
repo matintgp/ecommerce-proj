@@ -10,7 +10,13 @@ from drf_yasg import openapi
 
 
 class ProductViewSet(viewsets.ModelViewSet):
-    queryset = Product.objects.all()
+    queryset = Product.objects.all().prefetch_related(
+        'reviews', # برای بهینه‌سازی کوئری نظرات
+        'size',    # نام فیلد ManyToMany در مدل Product
+        'color',   # نام فیلد ManyToMany در مدل Product
+        'images',
+        'specifications'
+    ).select_related('category', 'brand', 'gender') # برای بهینه‌سازی کوئری ForeignKey
     serializer_class = ProductSerializer
     http_method_names = ['get']
     lookup_field = 'slug'
