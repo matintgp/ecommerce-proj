@@ -21,6 +21,8 @@ class ProductViewSet(viewsets.ModelViewSet):
     http_method_names = ['get']
     lookup_field = 'slug'
     permission_classes = [permissions.AllowAny]
+    pagination_class = None  # Disable pagination for this viewset
+    page_size = 1000  # Set a large page size to avoid pagination
     
     @swagger_auto_schema(
         tags=["Products"],
