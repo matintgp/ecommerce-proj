@@ -44,6 +44,7 @@ urlpatterns = [
     path('api/accounts/', include('apps.accounts.urls')),
     path('api/products/', include('apps.products.urls')),
     path('api/orders/', include('apps.orders.urls')),
+    path('api/support/', include('apps.support.urls')),
     path('', home),
     
     # Add login URLs
