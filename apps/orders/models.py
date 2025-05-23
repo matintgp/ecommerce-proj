@@ -2,6 +2,14 @@ from django.db import models
 from django.utils.crypto import get_random_string
 from django.utils import timezone
 from django.db.models import Q
+from apps.products.models import Color as ProductColor, Size as ProductSize
+
+
+
+
+
+
+
 
 class Order(models.Model):
     STATUS_CHOICES = [
@@ -70,13 +78,26 @@ class OrderItem(models.Model):
     quantity = models.PositiveIntegerField(default=1)
     subtotal = models.DecimalField(max_digits=10, decimal_places=2)
     
+    selected_color_name = models.CharField(max_length=50, blank=True, null=True)
+    selected_size_name = models.CharField(max_length=50, blank=True, null=True)
+    # ForeignKey to ProductColor and ProductSize models
+    selected_color = models.ForeignKey(ProductColor, on_delete=models.SET_NULL, null=True, blank=True)
+    selected_size = models.ForeignKey(ProductSize, on_delete=models.SET_NULL, null=True, blank=True)
+    
+    
+
     def save(self, *args, **kwargs):
         # Calculate subtotal
         self.subtotal = self.product_price * self.quantity
         super().save(*args, **kwargs)
     
     def __str__(self):
-        return f"{self.quantity}x {self.product_name} in Order #{self.order.order_number}"
+        color_size_info = ""
+        if self.selected_color_name:
+            color_size_info += f" - Color: {self.selected_color_name}"
+        if self.selected_size_name:
+            color_size_info += f" - Size: {self.selected_size_name}"
+        return f"{self.quantity}x {self.product_name}{color_size_info} in Order #{self.order.order_number}"
     
 
 class Cart(models.Model):
@@ -110,12 +131,21 @@ class CartItem(models.Model):
     added_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    # New fields for selected color and size
+    selected_color = models.ForeignKey(ProductColor, on_delete=models.SET_NULL, null=True, blank=True)
+    selected_size = models.ForeignKey(ProductSize, on_delete=models.SET_NULL, null=True, blank=True)
+
     class Meta:
-        unique_together = ('cart', 'product')
+        # Ensure uniqueness for product with specific color and size in the cart
+        unique_together = ('cart', 'product', 'selected_color', 'selected_size')
 
     def __str__(self):
-        return f"{self.quantity}x {self.product.name} in {self.cart}"
-    
+        color_size_info = ""
+        if self.selected_color:
+            color_size_info += f" - Color: {self.selected_color.name}"
+        if self.selected_size:
+            color_size_info += f" - Size: {self.selected_size.name}"
+        return f"{self.quantity}x {self.product.name}{color_size_info} in {self.cart}"
     
 
 class Coupon(models.Model):

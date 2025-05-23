@@ -2,13 +2,17 @@ from rest_framework import serializers
 from .models import Order, OrderItem, Cart, CartItem, Coupon
 from apps.products.serializers import ProductSerializer
 from django.utils import timezone
-
+from apps.products.serializers import ProductSerializer, ColorSerializer as ProductColorSerializer, SizeSerializer as ProductSizeSerializer
+from apps.products.models import Product
 
 class OrderItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = OrderItem
-        fields = ['id', 'product', 'product_name', 'product_price', 'quantity', 'subtotal']
-
+        fields = [
+            'id', 'product', 'product_name', 'product_price', 'quantity', 'subtotal',
+            'selected_color_name', 'selected_size_name',
+            'selected_color', 'selected_size'
+        ]
 
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
@@ -55,10 +59,15 @@ class PaymentUpdateSerializer(serializers.Serializer):
 
 class CartItemSerializer(serializers.ModelSerializer):
     product_details = ProductSerializer(source='product', read_only=True)
+    selected_color = ProductColorSerializer(read_only=True) # Display color details
+    selected_size = ProductSizeSerializer(read_only=True)   # Display size details
     
     class Meta:
         model = CartItem
-        fields = ['id', 'product', 'product_details', 'quantity', 'added_at']
+        fields = [
+            'id', 'product', 'product_details', 'quantity', 'added_at',
+            'selected_color', 'selected_size' # Add new fields
+        ]
         read_only_fields = ['added_at']
     
     def validate_quantity(self, value):
@@ -70,12 +79,34 @@ class CartItemSerializer(serializers.ModelSerializer):
 class CartItemAddSerializer(serializers.Serializer):
     product_id = serializers.IntegerField(min_value=1)
     quantity = serializers.IntegerField(min_value=1)
+    color_id = serializers.IntegerField(required=False, allow_null=True) 
+    size_id = serializers.IntegerField(required=False, allow_null=True)   
     
     def validate_quantity(self, value):
         if value <= 0:
             raise serializers.ValidationError("تعداد محصول باید بیشتر از صفر باشد")
         return value
 
+    def validate(self, data):
+        # Optional: Validate that the selected color and size are valid for the product
+        # This requires querying the Product model and its available colors/sizes
+        product_id = data.get('product_id')
+        color_id = data.get('color_id')
+        size_id = data.get('size_id')
+
+        try:
+            product = Product.objects.get(id=product_id)
+            if color_id and not product.color.filter(id=color_id).exists():
+                raise serializers.ValidationError(f"رنگ انتخاب شده برای محصول '{product.name}' موجود نیست.")
+            if size_id and not product.size.filter(id=size_id).exists():
+                raise serializers.ValidationError(f"سایز انتخاب شده برای محصول '{product.name}' موجود نیست.")
+        except Product.DoesNotExist:
+            raise serializers.ValidationError("محصول مورد نظر یافت نشد.")
+        # Add more validation if a product *must* have a color or size selected
+        # For example, if product.color.exists() and color_id is None:
+        #     raise serializers.ValidationError("برای این محصول باید رنگ انتخاب شود.")
+
+        return data
 
 class CartItemUpdateSerializer(serializers.Serializer):
     quantity = serializers.IntegerField(min_value=1)
@@ -120,7 +151,6 @@ class CartSerializer(serializers.ModelSerializer):
     def get_total(self, obj):
         try:
             total = sum(item.product.price * item.quantity for item in obj.items.all())
-            # تبدیل به عدد صحیح
             return int(total)
         except:
             return 0

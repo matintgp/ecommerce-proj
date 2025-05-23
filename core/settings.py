@@ -28,7 +28,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'drf_yasg',
     'rest_framework.authtoken',
-    # 'corsheaders',
+    'corsheaders',
     'django_filters',
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
@@ -42,6 +42,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    "corsheaders.middleware.CorsMiddleware",
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -197,15 +198,36 @@ SWAGGER_SETTINGS = {
 # CSRF settings for Next.js integration
 CSRF_COOKIE_SAMESITE = 'Lax'  # or 'None' if using cross-site requests with HTTPS
 CSRF_COOKIE_HTTPONLY = False  # Allow JavaScript access to the CSRF token
-CSRF_TRUSTED_ORIGINS = ['http://localhost:3000']  # Add your Next.js development server
+CSRF_TRUSTED_ORIGINS = ['http://localhost:3000']  # Erfan ip:port app ro bezar inja
 
-# # CORS settings if your Next.js app is served separately in development
-# CORS_ALLOW_CREDENTIALS = True
-# CORS_ALLOWED_ORIGINS = [
-#     'http://localhost:3000',  # Next.js development server
-#     # Add your production domain here
-# ]
 
+# CORS settings for Next.js integration
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOWED_ORIGINS = [
+    'http://localhost:3000',  # Erfan ip:port app ro bezar inja
+    'http://127.0.0.1:3000',  
+]
+
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
@@ -216,7 +238,6 @@ EMAIL_HOST_PASSWORD = 'chcz rdmz qhtn natj'
 DEFAULT_FROM_EMAIL = 'mtt584388@gmail.com'
 
 
-# For production, consider adding:
 if not DEBUG:
     CSRF_COOKIE_SECURE = True
     SESSION_COOKIE_SECURE = True

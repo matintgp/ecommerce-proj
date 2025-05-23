@@ -9,7 +9,9 @@ from drf_yasg import openapi
 from django.db import transaction
 from decimal import Decimal
 
-from .models import *
+from .models import * # Ensure ProductColor and ProductSize are available if not aliased
+from apps.products.models import Color as ProductColor, Size as ProductSize # Explicit import for clarity
+
 from .serializers import *
 
 
@@ -183,7 +185,6 @@ class OrderViewSet(viewsets.GenericViewSet):
             return Response({"status": "error", "message": "وضعیت پرداخت ارسال شده نامعتبر است."}, status=status.HTTP_400_BAD_REQUEST)
 
     
-    # ...existing code...
     @swagger_auto_schema(
         operation_summary="Track order",
         operation_description="Get tracking information for a specific order.",
@@ -240,7 +241,7 @@ class CartViewSet(viewsets.GenericViewSet):
     def get_serializer_class(self):
         if self.action == 'add_item':
             return CartItemAddSerializer
-        elif self.action == 'update_item':
+        elif self.action == 'update_item': # This serializer currently only handles quantity
             return CartItemUpdateSerializer
         elif self.action == 'checkout':
             return CheckoutSerializer
@@ -270,14 +271,14 @@ class CartViewSet(viewsets.GenericViewSet):
     
     @swagger_auto_schema(
         operation_summary="Add product to cart",
-        operation_description="Add a product to the user's cart or increase quantity if already exists",
+        operation_description="Add a product to the user's cart or increase quantity if already exists. Specify color_id and size_id if applicable.",
         request_body=CartItemAddSerializer,
         responses={200: CartSerializer()},
         tags=["Cart"]
     )
     @action(detail=False, methods=['post'], url_path='items')
     def add_item(self, request):
-        """افزودن محصول به سبد خرید"""
+        """افزودن محصول به سبد خرید با در نظر گرفتن رنگ و سایز"""
         cart, created = Cart.objects.get_or_create(user=request.user)
         serializer = CartItemAddSerializer(data=request.data)
         
@@ -286,35 +287,71 @@ class CartViewSet(viewsets.GenericViewSet):
             
         product_id = serializer.validated_data['product_id']
         quantity = serializer.validated_data['quantity']
+        color_id = serializer.validated_data.get('color_id')
+        size_id = serializer.validated_data.get('size_id')
         
         try:
-            # Check if item already exists in cart
-            item = CartItem.objects.get(cart=cart, product_id=product_id)
+            # ابتدا محصول را بررسی می‌کنیم
+            product = Product.objects.get(id=product_id)
+        except Product.DoesNotExist:
+            return Response({"status": "error", "message": "محصول یافت نشد."}, 
+                        status=status.HTTP_404_NOT_FOUND)
+        
+        # رنگ و سایز را اگر انتخاب شده، بررسی می‌کنیم
+        selected_color_obj = None
+        selected_size_obj = None
+        
+        if color_id:
+            try:
+                selected_color_obj = product.color.get(id=color_id)
+            except ProductColor.DoesNotExist:
+                return Response({"status": "error", "message": "رنگ انتخاب شده برای این محصول موجود نیست."}, 
+                            status=status.HTTP_400_BAD_REQUEST)
+        
+        if size_id:
+            try:
+                selected_size_obj = product.size.get(id=size_id)
+            except ProductSize.DoesNotExist:
+                return Response({"status": "error", "message": "سایز انتخاب شده برای این محصول موجود نیست."}, 
+                            status=status.HTTP_400_BAD_REQUEST)
+        
+        # بررسی اینکه آیا این آیتم با رنگ و سایز مشخص در سبد خرید وجود دارد
+        try:
+            item = CartItem.objects.get(
+                cart=cart,
+                product=product,
+                selected_color=selected_color_obj,
+                selected_size=selected_size_obj
+            )
+            # اگر وجود داشت، تعداد آن را افزایش می‌دهیم
             item.quantity += quantity
-            item.save()
+            item.save(update_fields=['quantity', 'updated_at'])
         except CartItem.DoesNotExist:
-            # Create new cart item
+            # اگر وجود نداشت، یک آیتم جدید ایجاد می‌کنیم
             CartItem.objects.create(
                 cart=cart,
-                product_id=product_id,
-                quantity=quantity
+                product=product,
+                quantity=quantity,
+                selected_color=selected_color_obj,
+                selected_size=selected_size_obj
             )
         
         result_serializer = CartSerializer(cart)
         return Response(result_serializer.data)
     
     @swagger_auto_schema(
-        operation_summary="Update cart item",
-        operation_description="Update the quantity of a product in the cart",
-        request_body=CartItemUpdateSerializer,
+        operation_summary="Update cart item quantity", # Clarified summary
+        operation_description="Update the quantity of a product in the cart. To change color/size, remove and re-add the item.",
+        request_body=CartItemUpdateSerializer, # This serializer only handles quantity
         responses={200: CartSerializer()},
         tags=["Cart"]
     )
-    @action(detail=True, methods=['put'], url_path='items/(?P<item_id>[^/.]+)')
+    @action(detail=True, methods=['put'], url_path='items/(?P<item_id>[^/.]+)') # item_id here refers to CartItem ID
     def update_item(self, request, item_id=None, **kwargs):
-        """به‌روزرسانی تعداد محصول در سبد خرید"""
+        """به‌روزرسانی تعداد یک آیتم مشخص در سبد خرید"""
+        # Note: item_id is the ID of the CartItem, which is unique for a product+color+size combination.
         cart, created = Cart.objects.get_or_create(user=request.user)
-        serializer = CartItemUpdateSerializer(data=request.data)
+        serializer = CartItemUpdateSerializer(data=request.data) # Only updates quantity
         
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -322,9 +359,10 @@ class CartViewSet(viewsets.GenericViewSet):
         quantity = serializer.validated_data['quantity']
         
         try:
+            # Get the specific CartItem instance
             item = CartItem.objects.get(id=item_id, cart=cart)
             item.quantity = quantity
-            item.save()
+            item.save(update_fields=['quantity', 'updated_at'])
                 
             result_serializer = CartSerializer(cart)
             return Response(result_serializer.data)
@@ -336,11 +374,11 @@ class CartViewSet(viewsets.GenericViewSet):
     
     @swagger_auto_schema(
         operation_summary="Remove item from cart",
-        operation_description="Remove a specific item from the user's cart",
+        operation_description="Remove a specific item (product with specific color/size) from the user's cart",
         responses={200: CartSerializer()},
         tags=["Cart"]
     )
-    @action(detail=True, methods=['delete'], url_path='items/(?P<item_id>[^/.]+)')
+    @action(detail=True, methods=['delete'], url_path='items/(?P<item_id>[^/.]+)') # item_id refers to CartItem ID
     def remove_item(self, request, item_id=None, **kwargs):
         """حذف محصول از سبد خرید"""
         cart, created = Cart.objects.get_or_create(user=request.user)
@@ -379,7 +417,7 @@ class CartViewSet(viewsets.GenericViewSet):
     )
     @action(detail=False, methods=['post'], url_path='checkout')
     def checkout(self, request):
-        """تبدیل سبد خرید به سفارش"""
+        """تبدیل سبد خرید به سفارش با در نظر گرفتن رنگ و سایز"""
         cart, created = Cart.objects.get_or_create(user=request.user)
         serializer = CheckoutSerializer(data=request.data)
         
@@ -387,28 +425,29 @@ class CartViewSet(viewsets.GenericViewSet):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
             
         address_id = serializer.validated_data['address_id']
-        payment_method = "credit card" # یا هر روش پیش‌فرض دیگر
+        payment_method = "credit card" 
         coupon_code = serializer.validated_data.get('coupon_code', '').strip()
         
-        items = cart.items.all()
-        if not items:
+        cart_items = cart.items.all() # Renamed for clarity
+        if not cart_items:
             return Response(
                 {"status": "error", "message": "سبد خرید شما خالی است"}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
 
         # --- BEGIN STOCK CHECK ---
-        for item in items:
-            if item.product.stock < item.quantity:
+        for cart_item_obj in cart_items: # Renamed for clarity
+            if cart_item_obj.product.stock < cart_item_obj.quantity: # Assuming stock is per product, not per variant
                 return Response(
-                    {"status": "error", "message": f"محصول '{item.product.name}' موجودی کافی ندارد."},
+                    {"status": "error", "message": f"محصول '{cart_item_obj.product.name}' موجودی کافی ندارد."},
                     status=status.HTTP_400_BAD_REQUEST
                 )
         # --- END STOCK CHECK ---
         
-        subtotal = sum(item.product.price * item.quantity for item in items)
+        # Recalculate subtotal based on cart items
+        subtotal = sum(item.product.price * item.quantity for item in cart_items)
         total = subtotal 
-        discount = Decimal('0.00') # مقدار اولیه تخفیف
+        discount = Decimal('0.00')
         applied_coupon_object = None
 
         print(f"Checkout initiated. Subtotal: {subtotal}, Coupon Code: '{coupon_code}'")
@@ -417,93 +456,81 @@ class CartViewSet(viewsets.GenericViewSet):
             try:
                 coupon = Coupon.objects.get(code=coupon_code, is_active=True)
                 now = timezone.now()
-                print(f"Coupon found: {coupon.code}, Amount: {coupon.amount}, Is Percentage: {coupon.is_percentage}")
-                print(f"Valid from: {coupon.valid_from}, Valid to: {coupon.valid_to}, Now: {now}")
-                print(f"Usage limit: {coupon.usage_limit}, Used count: {coupon.used_count}")
-                print(f"Min purchase: {coupon.min_purchase}")
-
                 is_valid_date = coupon.valid_from <= now <= coupon.valid_to
                 is_valid_usage = not coupon.usage_limit or coupon.used_count < coupon.usage_limit
                 is_valid_min_purchase = not coupon.min_purchase or subtotal >= coupon.min_purchase
                 
-                print(f"Is valid date: {is_valid_date}, Is valid usage: {is_valid_usage}, Is valid min purchase: {is_valid_min_purchase}")
-
                 if is_valid_date and is_valid_usage and is_valid_min_purchase:
                     if coupon.is_percentage:
-                        # مطمئن شوید که coupon.amount و 100 به عنوان Decimal در نظر گرفته می‌شوند
                         discount_percentage = coupon.amount / Decimal('100.0')
                         calculated_discount = subtotal * discount_percentage
                     else:
                         calculated_discount = coupon.amount
                     
-                    # اعمال حداکثر تخفیف اگر تعریف شده باشد
                     if coupon.max_discount and coupon.max_discount > 0:
                         discount = min(calculated_discount, coupon.max_discount)
                     else:
                         discount = calculated_discount
                     
-                    # اطمینان از اینکه تخفیف از کل مبلغ بیشتر نشود
-                    discount = min(discount, subtotal)
+                    discount = min(discount, subtotal) # Ensure discount isn't more than subtotal
                     total = subtotal - discount
-                    applied_coupon_object = coupon # ذخیره کوپن برای افزایش شمارنده استفاده
-                    print(f"Discount calculated: {discount}, New total: {total}")
-                else:
-                    print("Coupon conditions not met.")
+                    applied_coupon_object = coupon
             except Coupon.DoesNotExist:
-                print(f"Coupon with code '{coupon_code}' not found or not active.")
-                pass # اگر کوپن پیدا نشد یا فعال نبود، تخفیف 0 باقی می‌ماند
+                pass 
         
         try:
-            with transaction.atomic(): # شروع تراکنش
+            with transaction.atomic(): 
                 order = Order.objects.create(
                     user=request.user,
                     shipping_address_id=address_id,
                     payment_method=payment_method,
                     subtotal=subtotal,
-                    discount=discount, # مقدار تخفیف محاسبه شده
-                    total=total,
+                    discount=discount, 
+                    total=total, # Total is now calculated considering discount
                     promo_code=applied_coupon_object.code if applied_coupon_object and discount > 0 else None
                 )
                 
-                for item in items:
+                for cart_item_obj in cart_items: # Iterate through CartItem objects
                     OrderItem.objects.create(
                         order=order,
-                        product=item.product,
-                        product_name=item.product.name,
-                        product_price=item.product.price,
-                        quantity=item.quantity,
-                        subtotal=item.product.price * item.quantity
+                        product=cart_item_obj.product,
+                        product_name=cart_item_obj.product.name,
+                        product_price=cart_item_obj.product.price,
+                        quantity=cart_item_obj.quantity,
+                        subtotal=cart_item_obj.product.price * cart_item_obj.quantity,
+                        # Save selected color and size names
+                        selected_color_name=cart_item_obj.selected_color.name if cart_item_obj.selected_color else None,
+                        selected_size_name=cart_item_obj.selected_size.name if cart_item_obj.selected_size else None
                     )
                     
                     # --- BEGIN STOCK DEDUCTION ---
-                    product_to_update = item.product
-                    product_to_update.stock -= item.quantity
+                    # Assuming stock is managed per product, not per variant (color/size)
+                    # If stock is per variant, this logic needs to be more complex
+                    product_to_update = cart_item_obj.product
+                    product_to_update.stock -= cart_item_obj.quantity
                     product_to_update.save(update_fields=['stock'])
                     # --- END STOCK DEDUCTION ---
 
                 if applied_coupon_object and discount > 0:
                     applied_coupon_object.used_count += 1
                     applied_coupon_object.save(update_fields=['used_count'])
-                    print(f"Coupon '{applied_coupon_object.code}' usage count incremented.")
                 
-                cart.items.all().delete() # پاک کردن سبد خرید
-                print("Checkout successful. Order created, stock updated, cart cleared.")
+                cart.items.all().delete() 
                 return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)
         except Exception as e:
-            print(f"Error during checkout transaction: {str(e)}") # لاگ کردن خطا
             return Response(
-                {"status": "error", "message": "خطایی در هنگام پردازش سفارش رخ داد. لطفا دوباره تلاش کنید."},
+                {"status": "error", "message": f"خطایی در هنگام پردازش سفارش رخ داد: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
     
     @swagger_auto_schema(
         operation_summary="Decrease item quantity in cart",
-        operation_description="Decrease the quantity of a specific item in the user's cart by a specified amount. If quantity becomes zero or less, the item is removed.",
-        request_body=CartItemQuantitySerializer, # استفاده از سریالایزر جدید
+        operation_description="Decrease the quantity of a specific item (product with specific color/size) in the user's cart. If quantity becomes zero or less, the item is removed.",
+        request_body=CartItemQuantitySerializer, 
         responses={200: CartSerializer()},
         tags=["Cart"]
     )
-    @action(detail=True, methods=['post'], url_path='items/(?P<item_id>[^/.]+)/decrease')
+    @action(detail=True, methods=['post'], url_path='items/(?P<item_id>[^/.]+)/decrease') # item_id refers to CartItem ID
     def decrease_item_quantity(self, request, item_id=None, **kwargs):
         """کم کردن تعداد یک محصول در سبد خرید"""
         cart, created = Cart.objects.get_or_create(user=request.user)
@@ -676,3 +703,5 @@ class CouponViewSet(viewsets.GenericViewSet):
             "discount_amount": int(discount_amount),
             "total_after_discount": int(cart_total - discount_amount)
         })
+
+

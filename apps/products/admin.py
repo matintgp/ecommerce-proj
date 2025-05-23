@@ -1,5 +1,7 @@
 from django.contrib import admin
 from .models import *
+from django.contrib.auth.models import Group
+
 
 class ProductImageInline(admin.TabularInline):
     model = ProductImage
@@ -38,12 +40,12 @@ class GenderAdmin(admin.ModelAdmin):
 
 
 
-@admin.register(Specification)
-class SpecificationAdmin(admin.ModelAdmin):
-    list_display = ('product', 'name', 'value')
-    list_filter = ('product',)
-    search_fields = ('product__name', 'name')
-    ordering = ('product',)
+# @admin.register(Specification)
+# class SpecificationAdmin(admin.ModelAdmin):
+#     list_display = ('product', 'name', 'value')
+#     list_filter = ('product',)
+#     search_fields = ('product__name', 'name')
+#     ordering = ('product',)
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
@@ -60,11 +62,6 @@ class CategoryAdmin(admin.ModelAdmin):
     search_fields = ('name',)
     prepopulated_fields = {'slug': ('name',)}
 
-@admin.register(ProductImage)
-class ProductImageAdmin(admin.ModelAdmin):
-    list_display = ('product', 'alt_text', 'is_feature')
-    list_filter = ('is_feature', 'created_at')
-    search_fields = ('product__name', 'alt_text')
 
 @admin.register(Review)
 class ReviewAdmin(admin.ModelAdmin):
@@ -73,7 +70,5 @@ class ReviewAdmin(admin.ModelAdmin):
     search_fields = ('product__name', 'user__email', 'title', 'comment')
     list_editable = ('is_approved',)
 
-@admin.register(Wishlist)
-class WishlistAdmin(admin.ModelAdmin):
-    list_display = ('user', 'product', 'added_at')
-    search_fields = ('user__email', 'product__name')
+
+admin.site.unregister(Group)

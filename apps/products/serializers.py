@@ -45,14 +45,28 @@ class CategorySerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'slug', 'parent']
         read_only_fields = ['id', 'slug']
 
-class ReviewSerializer(serializers.ModelSerializer): # این سریالایزر برای نمایش نظرات لازم است
+class ReviewSerializer(serializers.ModelSerializer):
     user_email = serializers.EmailField(source='user.email', read_only=True)
     
     class Meta:
         model = Review
-        fields = ['id', 'user_email', 'rating', 'title', 'comment', 'created_at', 'is_approved']
-        read_only_fields = ['id', 'created_at', 'is_approved']
+        fields = ['id', 'product', 'user_email', 'rating', 'title', 'comment', 'created_at', 'is_approved']  # اضافه کردن product
+        read_only_fields = ['id', 'user_email', 'created_at', 'is_approved']
 
+    def validate(self, data):
+        user = self.context['request'].user
+        product = data['product']
+        
+        if Review.objects.filter(user=user, product=product).exists():
+            raise serializers.ValidationError("شما قبلاً برای این محصول نظر داده‌اید.")
+        return data
+    
+    def create(self, validated_data):
+        validated_data['is_approved'] = True
+        return super().create(validated_data)
+    
+    
+    
 class ProductSerializer(serializers.ModelSerializer):
     category = CategorySerializer(read_only=True)
     category_id = serializers.PrimaryKeyRelatedField(
@@ -111,11 +125,26 @@ class ProductSerializer(serializers.ModelSerializer):
         
 
 
+class WishlistCreateSerializer(serializers.ModelSerializer):
+    """سریالایزر برای ایجاد آیتم wishlist"""
+    class Meta:
+        model = Wishlist
+        fields = ['product']
+    
+    def validate(self, data):
+        user = self.context['request'].user
+        product = data['product']
+        
+        if Wishlist.objects.filter(user=user, product=product).exists():
+            raise serializers.ValidationError("این محصول قبلاً در لیست علاقه‌مندی‌های شما موجود است.")
+        
+        return data
+
 class WishlistSerializer(serializers.ModelSerializer):
+    """سریالایزر برای نمایش wishlist"""
     product_details = ProductSerializer(source='product', read_only=True)
     
     class Meta:
         model = Wishlist
         fields = ['id', 'product', 'product_details', 'added_at']
-
-        
+        read_only_fields = ['added_at']
