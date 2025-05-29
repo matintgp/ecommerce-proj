@@ -38,7 +38,8 @@ class OrderViewSet(viewsets.GenericViewSet):
     """
     permission_classes = [permissions.IsAuthenticated]
     parser_classes = (MultiPartParser, FormParser) 
-
+    pagination_class = None
+    
     def get_serializer_class(self):
         if self.action == 'cancel':
             return OrderUpdateSerializer
@@ -205,26 +206,27 @@ class OrderViewSet(viewsets.GenericViewSet):
         order = get_object_or_404(self.get_queryset(), pk=pk)
         
         # محاسبه تاریخ تخمینی تحویل (مثال ساده)
-        estimated_delivery_date = None
+        estimated_delivery_timestamp = None
         if order.shipped_at:
-            estimated_delivery_date = order.shipped_at + timezone.timedelta(days=3) # فرض ۳ روز برای تحویل
+            estimated_delivery_date = order.shipped_at + timezone.timedelta(days=3)
+            estimated_delivery_timestamp = int(calendar.timegm(estimated_delivery_date.utctimetuple()))
         
         tracking_info = {
             "order_id": order.id,
             "order_number": order.order_number,
             "status": order.status,
             "status_display": order.get_status_display(),
-            "created_at": order.created_at,
-            "updated_at": order.updated_at,
+            "created_at": int(calendar.timegm(order.created_at.utctimetuple())),
+            "updated_at": int(calendar.timegm(order.updated_at.utctimetuple())),
             "is_paid": order.payment_status == 'paid', 
             "payment_method": order.payment_method,
-            "payment_date": order.payment_date, # اکنون این فیلد باید وجود داشته باشد
-            "transaction_id": order.transaction_id, # اضافه کردن transaction_id به اطلاعات پیگیری
+            "payment_date": int(calendar.timegm(order.payment_date.utctimetuple())) if order.payment_date else None,
+            "transaction_id": order.transaction_id,
             "shipping_address": OrderSerializer(order).data.get('shipping_address_details'), 
             "tracking_number": order.tracking_number,
-            "shipped_at": order.shipped_at,
-            "delivered_at": order.delivered_at,
-            "estimated_delivery": estimated_delivery_date.strftime('%Y-%m-%d') if estimated_delivery_date else None,
+            "shipped_at": int(calendar.timegm(order.shipped_at.utctimetuple())) if order.shipped_at else None,
+            "delivered_at": int(calendar.timegm(order.delivered_at.utctimetuple())) if order.delivered_at else None,
+            "estimated_delivery": estimated_delivery_timestamp,
             "items": OrderItemSerializer(order.items.all(), many=True).data 
         }
         
@@ -237,6 +239,7 @@ class CartViewSet(viewsets.GenericViewSet):
     """
     permission_classes = [permissions.IsAuthenticated]
     parser_classes = (MultiPartParser, FormParser) 
+    pagination_class = None
     
     def get_serializer_class(self):
         if self.action == 'add_item':
@@ -316,17 +319,33 @@ class CartViewSet(viewsets.GenericViewSet):
                             status=status.HTTP_400_BAD_REQUEST)
         
         # بررسی اینکه آیا این آیتم با رنگ و سایز مشخص در سبد خرید وجود دارد
+        existing_item = None
         try:
-            item = CartItem.objects.get(
+            existing_item = CartItem.objects.get(
                 cart=cart,
                 product=product,
                 selected_color=selected_color_obj,
                 selected_size=selected_size_obj
             )
-            # اگر وجود داشت، تعداد آن را افزایش می‌دهیم
-            item.quantity += quantity
-            item.save(update_fields=['quantity', 'updated_at'])
         except CartItem.DoesNotExist:
+            pass
+        
+        # محاسبه تعداد نهایی که در سبد خرید خواهد بود
+        current_cart_quantity = existing_item.quantity if existing_item else 0
+        final_quantity = current_cart_quantity + quantity
+        
+        # بررسی موجودی انبار
+        if final_quantity > product.stock:
+            return Response({
+                "status": "error", 
+                "message": f"موجودی کافی نیست. موجودی انبار: {product.stock} عدد، موجودی در سبد شما: {current_cart_quantity} عدد، حداکثر قابل اضافه کردن: {max(0, product.stock - current_cart_quantity)} عدد"
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        if existing_item:
+            # اگر وجود داشت، تعداد آن را افزایش می‌دهیم
+            existing_item.quantity = final_quantity
+            existing_item.save(update_fields=['quantity', 'updated_at'])
+        else:
             # اگر وجود نداشت، یک آیتم جدید ایجاد می‌کنیم
             CartItem.objects.create(
                 cart=cart,
@@ -361,6 +380,14 @@ class CartViewSet(viewsets.GenericViewSet):
         try:
             # Get the specific CartItem instance
             item = CartItem.objects.get(id=item_id, cart=cart)
+            
+            # بررسی موجودی انبار
+            if quantity > item.product.stock:
+                return Response({
+                    "status": "error", 
+                    "message": f"موجودی کافی نیست. موجودی انبار: {item.product.stock} عدد، حداکثر قابل انتخاب: {item.product.stock} عدد"
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
             item.quantity = quantity
             item.save(update_fields=['quantity', 'updated_at'])
                 
@@ -565,6 +592,7 @@ class CouponViewSet(viewsets.GenericViewSet):
     """
     permission_classes = [permissions.IsAuthenticated]
     parser_classes = (MultiPartParser, FormParser) 
+    pagination_class = None
     
     def get_serializer_class(self):
         if self.action == 'validate' or self.action == 'apply_to_cart':

@@ -25,6 +25,7 @@ class UserViewSet(viewsets.GenericViewSet): # API endpoints for managing users
     filter_backends = [SearchFilter]
     search_fields = ['username']
     http_method_names = ['get', 'post', 'put', 'delete']
+    pagination_class = None 
     
     def get_permissions(self): 
         if self.action in ['register', 'login', 'logout_user', "send_verification_email"]:
@@ -246,6 +247,7 @@ class UserAddressViewSet(viewsets.GenericViewSet): # API endpoints for managing 
     serializer_class = UserAddressSerializer
     permission_classes = [permissions.IsAuthenticated]
     parser_classes = (MultiPartParser, FormParser) 
+    pagination_class = None
 
     def get_queryset(self):
         # Avoid error when generating Swagger docs

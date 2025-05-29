@@ -61,6 +61,7 @@ class CategoryViewSet(viewsets.ModelViewSet):
     http_method_names = ['get']
     lookup_field = 'slug'
     permission_classes = [permissions.AllowAny]
+    pagination_class = None
     
     @swagger_auto_schema(
         tags=['Categories'],
@@ -87,6 +88,7 @@ class BrandViewSet(viewsets.ModelViewSet):
     serializer_class = BrandSerializer
     http_method_names = ['get']
     permission_classes = [permissions.AllowAny]
+    pagination_class = None
     
     @swagger_auto_schema(
         tags=['Brands'],
@@ -113,6 +115,7 @@ class ReviewViewSet(viewsets.ModelViewSet):
     filterset_fields = ['product', 'rating']
     search_fields = ['title', 'comment']
     http_method_names = ['get', 'post', 'patch', 'delete']
+    pagination_class = None
     
     def get_queryset(self):
         # حالا که همه نظرات خودکار تایید می‌شوند، می‌توانیم همه را نمایش دهیم
@@ -209,6 +212,7 @@ class WishlistViewSet(
     serializer_class = WishlistSerializer
     permission_classes = [permissions.IsAuthenticated]
     http_method_names = ['get', 'post', 'delete']
+    pagination_class = None
     
     def get_queryset(self):
         # Avoid error when generating Swagger docs
