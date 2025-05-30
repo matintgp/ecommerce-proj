@@ -5,7 +5,7 @@ from django.contrib.auth.models import Group
 
 class ProductImageInline(admin.TabularInline):
     model = ProductImage
-    extra = 1  # Number of empty forms to display
+    extra = 1  
 
 
 class SpecificationInline(admin.TabularInline):
@@ -39,13 +39,6 @@ class GenderAdmin(admin.ModelAdmin):
     prepopulated_fields = {'slug': ('name',)}
 
 
-
-# @admin.register(Specification)
-# class SpecificationAdmin(admin.ModelAdmin):
-#     list_display = ('product', 'name', 'value')
-#     list_filter = ('product',)
-#     search_fields = ('product__name', 'name')
-#     ordering = ('product',)
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):

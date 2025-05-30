@@ -18,7 +18,24 @@ from .models import User, UserAddress
 from .serializers import *
 
 
-class UserViewSet(viewsets.GenericViewSet): # API endpoints for managing users
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+class UserViewSet(viewsets.GenericViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     parser_classes = (MultiPartParser, FormParser) 
@@ -41,30 +58,23 @@ class UserViewSet(viewsets.GenericViewSet): # API endpoints for managing users
     )
     @action(detail=False, methods=['post'], url_path='send-verification')
     def send_verification_email(self, request):
-        """ارسال کد تایید به ایمیل کاربر"""
         serializer = EmailVerificationSerializer(data=request.data)
         
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
             
         email = serializer.validated_data['email']
-        
-        # بررسی اینکه آیا ایمیل قبلاً ثبت شده است
         if User.objects.filter(email=email).exists():
             return Response(
                 {"error": "این ایمیل قبلا ثبت شده است"},
                 status=status.HTTP_400_BAD_REQUEST
             )
             
-        # حذف کدهای قبلی برای این ایمیل
         EmailOTP.objects.filter(email=email).delete()
-        
-        # ایجاد کد OTP جدید
         otp = EmailOTP(email=email)
         otp.save()
         
-        print(f"Generated OTP: {otp.otp_code}") 
-        
+        print(f"[+++]  Generated OTP: {otp.otp_code}  [+++]") # Debug 
         
         subject = 'کد تایید ایمیل'
         message = f'کد تایید شما: {otp.otp_code}\nاین کد تا 10 دقیقه معتبر است.'
@@ -91,7 +101,6 @@ class UserViewSet(viewsets.GenericViewSet): # API endpoints for managing users
     )
     @action(detail=False, methods=['post'], url_path='register')
     def register(self, request):
-        """ثبت‌نام کاربر جدید پس از تایید ایمیل"""
         serializer = UserRegistrationSerializer(data=request.data)
         
         if not serializer.is_valid():
@@ -106,7 +115,7 @@ class UserViewSet(viewsets.GenericViewSet): # API endpoints for managing users
                 otp_code=otp_code
             ).latest('created_at')
             
-            print(f"OTP Code: {otp}")  # Debugging line
+            print(f"OTP Code: {otp}")  # Debug
             
             if timezone.now() > otp.expires_at:
                 return Response(
@@ -122,7 +131,6 @@ class UserViewSet(viewsets.GenericViewSet): # API endpoints for managing users
             otp.is_verified = True
             otp.save()
             
-            # ایجاد کاربر جدید
             user_data = {
                 'username': serializer.validated_data.get('username'),
                 'email': email,
@@ -133,8 +141,6 @@ class UserViewSet(viewsets.GenericViewSet): # API endpoints for managing users
             
             user = User.objects.create_user(**user_data)
             user.save()
-            
-            # تولید توکن برای لاگین خودکار
             refresh = RefreshToken.for_user(user)
             
             return Response({
@@ -164,7 +170,7 @@ class UserViewSet(viewsets.GenericViewSet): # API endpoints for managing users
         
         username = serializer.validated_data.get('username')
         password = serializer.validated_data.get('password')
-        print(f"Username: {username}, Password: {password}")  # Debugging line
+        print(f"Username: {username}, Password: {password}")  # Debug
         user = authenticate(username=username, password=password)
         
         if user:
@@ -189,14 +195,8 @@ class UserViewSet(viewsets.GenericViewSet): # API endpoints for managing users
         serializer = UserLogoutSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        
-        # refresh_token = serializer.validated_data.get('refresh')
-        # try:
-            # token = RefreshToken(refresh_token)
-            # token.blacklist()
         return Response({"message": "با موفقیت از سیستم خارج شدید."}, status=status.HTTP_205_RESET_CONTENT)
-        # except TokenError:
-        #     return Response({"error": "توکن نامعتبر است."}, status=status.HTTP_400_BAD_REQUEST)
+
                             
 
 
@@ -243,14 +243,13 @@ class UserViewSet(viewsets.GenericViewSet): # API endpoints for managing users
     
 
 
-class UserAddressViewSet(viewsets.GenericViewSet): # API endpoints for managing user addresses
+class UserAddressViewSet(viewsets.GenericViewSet):  
     serializer_class = UserAddressSerializer
     permission_classes = [permissions.IsAuthenticated]
     parser_classes = (MultiPartParser, FormParser) 
     pagination_class = None
 
     def get_queryset(self):
-        # Avoid error when generating Swagger docs
         if getattr(self, 'swagger_fake_view', False):
             return UserAddress.objects.none()
         return UserAddress.objects.filter(user=self.request.user)
@@ -262,7 +261,6 @@ class UserAddressViewSet(viewsets.GenericViewSet): # API endpoints for managing 
     )
     @action(detail=False, methods=['get'], url_path='')
     def list_addresses(self, request):
-        """دریافت تمام آدرس‌های کاربر"""
         queryset = self.get_queryset()
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
@@ -274,7 +272,6 @@ class UserAddressViewSet(viewsets.GenericViewSet): # API endpoints for managing 
     )
     @action(detail=False, methods=['post'], url_path='')
     def add_address(self, request):
-        """افزودن آدرس جدید"""
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
             serializer.save(user=request.user)
@@ -295,7 +292,6 @@ class UserAddressViewSet(viewsets.GenericViewSet): # API endpoints for managing 
     )
     @action(detail=True, methods=['put', 'patch'], url_path='')
     def update_address(self, request, pk=None):
-        """بروزرسانی آدرس"""
         address = get_object_or_404(UserAddress, id=pk, user=request.user)
         serializer = self.get_serializer(address, data=request.data, partial=request.method == "PATCH")
         if serializer.is_valid():
@@ -310,7 +306,6 @@ class UserAddressViewSet(viewsets.GenericViewSet): # API endpoints for managing 
     )
     @action(detail=True, methods=['delete'], url_path='')
     def delete_address(self, request, pk=None):
-        """حذف آدرس"""
         address = get_object_or_404(UserAddress, id=pk, user=request.user)
         address.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)

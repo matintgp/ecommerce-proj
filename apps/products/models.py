@@ -13,16 +13,13 @@ class Category(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.slug:
-            # Auto-generate slug from name if slug is not provided
             self.slug = slugify(self.name)
         
-        # Ensure slug is unique by adding a number if needed
         original_slug = self.slug
         counter = 1
         while Category.objects.filter(slug=self.slug).exclude(id=self.id).exists():
             self.slug = f"{original_slug}-{counter}"
             counter += 1
-        # Save the category instance
         super().save(*args, **kwargs)
         
     def __str__(self):
@@ -34,7 +31,6 @@ class Gender(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.slug:
-            # Auto-generate slug from name if slug is not provided
             self.slug = slugify(self.name)
         super().save(*args, **kwargs)
     
@@ -48,7 +44,6 @@ class Color(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.slug:
-            # Auto-generate slug from name if slug is not provided
             self.slug = slugify(self.name)  
         super().save(*args, **kwargs)      
     
@@ -61,7 +56,6 @@ class Size(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.slug:
-            # Auto-generate slug from name if slug is not provided
             self.slug = slugify(self.name)
         super().save(*args, **kwargs)
     
@@ -74,7 +68,6 @@ class Brand(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.slug:
-            # Auto-generate slug from name if slug is not provided
             self.slug = slugify(self.name)
         super().save(*args, **kwargs)
     
@@ -110,11 +103,9 @@ class Product(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def save(self, *args, **kwargs):
-        # Auto-generate slug from name if slug is not provided
         if not self.slug:
             self.slug = slugify(self.name)
             
-        # Ensure slug is unique by adding a number if needed
         original_slug = self.slug
         counter = 1
         while Product.objects.filter(slug=self.slug).exclude(id=self.id).exists():
@@ -137,7 +128,7 @@ class ProductImage(models.Model):
         return f"{self.product.name} - {self.alt_text}"
     
 class Review(models.Model):
-    RATING_CHOICES = [(i, str(i)) for i in range(1, 6)]  # 1-5 star rating
+    RATING_CHOICES = [(i, str(i)) for i in range(1, 6)]  # 1-5 star
     
     product = models.ForeignKey('Product', on_delete=models.CASCADE, related_name='reviews')
     user = models.ForeignKey('accounts.User', on_delete=models.CASCADE, related_name='reviews')
@@ -146,10 +137,10 @@ class Review(models.Model):
     comment = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    is_approved = models.BooleanField(default=False)  # For moderation
+    is_approved = models.BooleanField(default=False) 
 
     class Meta:
-        unique_together = ('product', 'user')  # One review per product per user
+        unique_together = ('product', 'user') 
         ordering = ['-created_at']
 
     def __str__(self):
@@ -161,7 +152,7 @@ class Wishlist(models.Model):
     added_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ('user', 'product')  # Each product appears once per user wishlist
+        unique_together = ('user', 'product')  
 
     def __str__(self):
         return f"{self.user.email}'s wishlist: {self.product.name}"

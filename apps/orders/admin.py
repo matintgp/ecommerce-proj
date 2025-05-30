@@ -7,7 +7,7 @@ class OrderItemInline(admin.TabularInline):
     fields = ('product', 'product_name', 'product_price', 'quantity', 'subtotal')
     readonly_fields = ('product_name', 'product_price', 'subtotal')
     extra = 0
-    can_delete = True # اجازه حذف آیتم‌ها از سفارش در ادمین
+    can_delete = True 
 
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
@@ -153,7 +153,7 @@ class CouponAdmin(admin.ModelAdmin):
     def amount_display(self, obj):
         if obj.is_percentage:
             return f"{obj.amount}%"
-        return f"${obj.amount}" # یا هر واحد پولی دیگر
+        return f"${obj.amount}"  
     amount_display.short_description = 'Discount'
 
     def activate_coupons(self, request, queryset):

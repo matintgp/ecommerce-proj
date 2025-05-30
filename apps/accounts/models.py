@@ -38,7 +38,7 @@ class User(AbstractUser):
     objects = CustomUserManager()
 
     def __str__(self):
-        return self.username  # استفاده از یوزرنیم در بازنمایی متنی
+        return self.username   
 
 class EmailOTP(models.Model):
     email = models.EmailField()
@@ -49,17 +49,14 @@ class EmailOTP(models.Model):
     
     def save(self, *args, **kwargs):
         if not self.otp_code:
-            # تولید کد OTP تصادفی 6 رقمی
             self.otp_code = ''.join(random.choices(string.digits, k=6))
         
         if not self.expires_at:
-            # تنظیم زمان انقضا - 10 دقیقه
             self.expires_at = timezone.now() + timedelta(minutes=10)
             
         super().save(*args, **kwargs)
     
     def is_valid(self):
-        # بررسی معتبر بودن کد (منقضی نشده باشد)
         return not self.is_verified and timezone.now() <= self.expires_at
     
     class Meta:
@@ -86,7 +83,6 @@ class UserAddress(models.Model):
 
     def save(self, *args, **kwargs):
         if self.is_default:
-            # Set all other addresses of this user to non-default
             UserAddress.objects.filter(user=self.user).update(is_default=False)
         super().save(*args, **kwargs)
         

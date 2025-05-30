@@ -13,29 +13,26 @@ class IsOwnerOrReadOnly(permissions.BasePermission):
     Custom permission to only allow owners of an object to edit it.
     """
     def has_object_permission(self, request, view, obj):
-        # Read permissions are allowed for any request,
-        # so we'll always allow GET, HEAD or OPTIONS requests.
         if request.method in permissions.SAFE_METHODS:
             return True
 
-        # Write permissions are only allowed to the owner of the review.
         return obj.user == request.user
 
 
 class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all().prefetch_related(
-        'reviews', # برای بهینه‌سازی کوئری نظرات
-        'size',    # نام فیلد ManyToMany در مدل Product
-        'color',   # نام فیلد ManyToMany در مدل Product
+        'reviews', 
+        'size',   
+        'color',   
         'images',
         'specifications'
-    ).select_related('category', 'brand', 'gender') # برای بهینه‌سازی کوئری ForeignKey
+    ).select_related('category', 'brand', 'gender') 
     serializer_class = ProductSerializer
     http_method_names = ['get']
     lookup_field = 'slug'
     permission_classes = [permissions.AllowAny]
-    pagination_class = None  # Disable pagination for this viewset
-    page_size = 1000  # Set a large page size to avoid pagination
+    pagination_class = None 
+    page_size = 1000  
     
     @swagger_auto_schema(
         tags=["Products"],
@@ -118,16 +115,11 @@ class ReviewViewSet(viewsets.ModelViewSet):
     pagination_class = None
     
     def get_queryset(self):
-        # حالا که همه نظرات خودکار تایید می‌شوند، می‌توانیم همه را نمایش دهیم
-        # اما اگر بخواهید فقط ادمین ها نظرات تایید نشده را ببینند:
         if hasattr(self.request, 'user') and self.request.user.is_staff:
             return Review.objects.all().select_related('user', 'product')
         return Review.objects.filter(is_approved=True).select_related('user', 'product')
     
     def get_permissions(self):
-        """
-        تنظیم مجوزها بر اساس عمل
-        """
         if self.action in ['update', 'partial_update', 'destroy']:
             permission_classes = [permissions.IsAuthenticated, IsOwnerOrReadOnly]
         else:
@@ -191,11 +183,9 @@ class ReviewViewSet(viewsets.ModelViewSet):
         return super().destroy(request, *args, **kwargs)
     
     def perform_create(self, serializer):
-        # تایید خودکار نظر هنگام ایجاد
         serializer.save(user=self.request.user, is_approved=True)
 
     def perform_update(self, serializer):
-        # نظر همچنان تایید شده باقی بماند هنگام ویرایش
         serializer.save(is_approved=True)
         
         
@@ -215,7 +205,6 @@ class WishlistViewSet(
     pagination_class = None
     
     def get_queryset(self):
-        # Avoid error when generating Swagger docs
         if getattr(self, 'swagger_fake_view', False):
             return Wishlist.objects.none()
         return Wishlist.objects.filter(user=self.request.user).select_related('product')
@@ -228,14 +217,6 @@ class WishlistViewSet(
     def list(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)
     
-    # @swagger_auto_schema(
-    #     tags=["Wishlist"],
-    #     operation_summary="Add item to wishlist",
-    #     operation_description="Add a product to the user's wishlist. Authentication required.",
-    #     request_body=WishlistCreateSerializer
-    # )
-    # def create(self, request, *args, **kwargs):
-    #     return super().create(request, *args, **kwargs)
     
     @swagger_auto_schema(
         tags=["Wishlist"],
@@ -245,14 +226,7 @@ class WishlistViewSet(
     def retrieve(self, request, *args, **kwargs):
         return super().retrieve(request, *args, **kwargs)
     
-    # @swagger_auto_schema(
-    #     tags=["Wishlist"],
-    #     operation_summary="Remove from wishlist",
-    #     operation_description="Remove a product from the user's wishlist"
-    # )
-    # def destroy(self, request, *args, **kwargs):
-    #     return super().destroy(request, *args, **kwargs)
-    
+ 
     @swagger_auto_schema(
         tags=["Wishlist"],
         operation_summary="Toggle wishlist",
@@ -267,7 +241,6 @@ class WishlistViewSet(
     )
     @action(detail=False, methods=['post'], url_path='toggle')
     def toggle_wishlist(self, request):
-        """تغییر وضعیت محصول در wishlist"""
         product_id = request.data.get('product_id')
         
         if not product_id:

@@ -7,9 +7,7 @@ from apps.products.models import Product
 import calendar
 from datetime import datetime
 
-class UnixTimestampField(serializers.Field):
-    """Custom field to convert datetime to Unix timestamp"""
-    
+class UnixTimestampField(serializers.Field):    
     def to_representation(self, value):
         if value is None:
             return None
@@ -40,7 +38,6 @@ class OrderSerializer(serializers.ModelSerializer):
     shipping_address_details = serializers.SerializerMethodField()
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     
-    # تبدیل datetime ها به Unix timestamp
     created_at = UnixTimestampField(read_only=True)
     updated_at = UnixTimestampField(read_only=True)
     payment_date = UnixTimestampField(read_only=True)
@@ -87,7 +84,6 @@ class CartItemSerializer(serializers.ModelSerializer):
     selected_color = ProductColorSerializer(read_only=True)
     selected_size = ProductSizeSerializer(read_only=True)
     
-    # تبدیل datetime ها به Unix timestamp
     added_at = UnixTimestampField(read_only=True)
     updated_at = UnixTimestampField(read_only=True)
     
@@ -124,7 +120,6 @@ class CartItemAddSerializer(serializers.Serializer):
         try:
             product = Product.objects.get(id=product_id)
             
-            # بررسی موجودی در سطح serializer
             if quantity > product.stock:
                 raise serializers.ValidationError(
                     f"موجودی کافی نیست. موجودی انبار: {product.stock} عدد"
@@ -160,7 +155,6 @@ class CartSerializer(serializers.ModelSerializer):
     total = serializers.SerializerMethodField()
     item_count = serializers.SerializerMethodField()
     
-    # تبدیل datetime ها به Unix timestamp
     created_at = UnixTimestampField(read_only=True)
     updated_at = UnixTimestampField(read_only=True)
     
@@ -183,7 +177,6 @@ class CouponSerializer(serializers.ModelSerializer):
     discount_type = serializers.SerializerMethodField()
     is_valid = serializers.SerializerMethodField()
     
-    # تبدیل datetime ها به Unix timestamp
     valid_from = UnixTimestampField(read_only=True)
     valid_to = UnixTimestampField(read_only=True)
     created_at = UnixTimestampField(read_only=True)

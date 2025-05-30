@@ -9,8 +9,8 @@ from drf_yasg import openapi
 from django.db import transaction
 from decimal import Decimal
 
-from .models import * # Ensure ProductColor and ProductSize are available if not aliased
-from apps.products.models import Color as ProductColor, Size as ProductSize # Explicit import for clarity
+from .models import *  
+from apps.products.models import Color as ProductColor, Size as ProductSize 
 
 from .serializers import *
 
@@ -33,9 +33,6 @@ from .serializers import *
 
 
 class OrderViewSet(viewsets.GenericViewSet):
-    """
-    API endpoints for managing user orders
-    """
     permission_classes = [permissions.IsAuthenticated]
     parser_classes = (MultiPartParser, FormParser) 
     pagination_class = None
@@ -48,13 +45,12 @@ class OrderViewSet(viewsets.GenericViewSet):
         return OrderSerializer
     
     def get_queryset(self):
-        # Avoid error when generating Swagger docs
         if getattr(self, 'swagger_fake_view', False):
             return Order.objects.none()
         user = self.request.user
         if user.is_authenticated:
             return Order.objects.filter(user=user)
-        return Order.objects.none() # یا مدیریت کاربر مهمان اگر لازم است
+        return Order.objects.none()  
     
     @swagger_auto_schema(
         operation_summary="Get all orders",
@@ -63,7 +59,6 @@ class OrderViewSet(viewsets.GenericViewSet):
     )
     @action(detail=False, methods=['get'], url_path='')
     def list_orders(self, request):
-        """دریافت تمام سفارش‌های کاربر"""
         queryset = self.get_queryset().order_by('-created_at')
         serializer = OrderSerializer(queryset, many=True)
         return Response(serializer.data)
@@ -75,15 +70,13 @@ class OrderViewSet(viewsets.GenericViewSet):
     )
     @action(detail=True, methods=['get'], url_path='')
     def get_order(self, request, pk=None):
-        """دریافت جزئیات یک سفارش"""
-        order = get_object_or_404(self.get_queryset(), pk=pk) # استفاده از get_queryset برای امنیت
+        order = get_object_or_404(self.get_queryset(), pk=pk)
         serializer = OrderSerializer(order)
         return Response(serializer.data)
     
     @swagger_auto_schema(
         operation_summary="Cancel order",
         operation_description="Cancel an order that hasn't been shipped yet. Allowed statuses for cancellation: 'pending', 'processing'.",
-        # request_body=OrderUpdateSerializer, # بدنه درخواست برای کنسل کردن لازم نیست، مگر اینکه بخواهید دلیلی ارسال کنید
         responses={
             200: openapi.Response("Order cancelled successfully"),
             400: openapi.Response("Order cannot be cancelled"),
@@ -93,28 +86,20 @@ class OrderViewSet(viewsets.GenericViewSet):
     )
     @action(detail=True, methods=['post'], url_path='cancel') 
     def cancel(self, request, pk=None):
-        """لغو سفارش"""
         order = get_object_or_404(self.get_queryset(), pk=pk)
-        
-        # وضعیت‌هایی که در آن‌ها می‌توان سفارش را لغو کرد
         cancellable_statuses = ['pending', 'processing'] 
         
         if order.status in cancellable_statuses:
-            # بازگرداندن محصولات به انبار در صورت لغو (اگر قبلا کم شده)
-            # این بخش نیاز به بررسی دقیق‌تر دارد که آیا در زمان ایجاد سفارش از انبار کم شده یا در زمان پرداخت
-            # فرض می‌کنیم در زمان ایجاد سفارش (checkout) از انبار کم شده است
             with transaction.atomic():
                 order.status = 'cancelled'
                 order.save(update_fields=['status'])
 
-                # بازگرداندن آیتم‌ها به انبار
                 for item in order.items.all():
-                    if item.product: # بررسی اینکه محصول هنوز وجود دارد
+                    if item.product:
                         product_to_update = item.product
                         product_to_update.stock += item.quantity
                         product_to_update.save(update_fields=['stock'])
                 
-                # اگر کوپنی استفاده شده بود، شمارنده آن را کاهش دهید (اختیاری و بسته به منطق کسب و کار)
                 if order.promo_code and order.discount > 0:
                     try:
                         coupon = Coupon.objects.get(code=order.promo_code)
@@ -122,7 +107,7 @@ class OrderViewSet(viewsets.GenericViewSet):
                             coupon.used_count -= 1
                             coupon.save(update_fields=['used_count'])
                     except Coupon.DoesNotExist:
-                        pass # اگر کوپن پیدا نشد، کاری انجام نده
+                        pass 
 
             return Response({"status": "success", "message": "سفارش با موفقیت لغو شد."})
         
@@ -144,7 +129,6 @@ class OrderViewSet(viewsets.GenericViewSet):
     )
     @action(detail=True, methods=['post'], url_path='payment')
     def update_payment(self, request, pk=None):
-        """به‌روزرسانی وضعیت پرداخت سفارش"""
         order = get_object_or_404(self.get_queryset(), pk=pk)
         serializer = PaymentUpdateSerializer(data=request.data)
         
@@ -152,7 +136,7 @@ class OrderViewSet(viewsets.GenericViewSet):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
             
         requested_payment_status = serializer.validated_data['payment_status']
-        transaction_id = serializer.validated_data.get('transaction_id') # دریافت transaction_id از سریالایزر
+        transaction_id = serializer.validated_data.get('transaction_id') 
 
         allowed_statuses_for_payment_update = ['pending'] 
         if order.status not in allowed_statuses_for_payment_update:
@@ -167,11 +151,10 @@ class OrderViewSet(viewsets.GenericViewSet):
 
             order.payment_status = 'paid'
             order.status = 'processing' 
-            if transaction_id: # اگر transaction_id ارسال شده بود
+            if transaction_id: 
                 order.transaction_id = transaction_id 
-            order.payment_date = timezone.now() # تنظیم تاریخ پرداخت
+            order.payment_date = timezone.now() 
             
-            # اضافه کردن transaction_id و payment_date به update_fields
             update_fields_list = ['payment_status', 'status', 'payment_date']
             if transaction_id:
                 update_fields_list.append('transaction_id')
@@ -202,10 +185,8 @@ class OrderViewSet(viewsets.GenericViewSet):
     )
     @action(detail=True, methods=['get'], url_path='track')
     def track_order(self, request, pk=None):
-        """پیگیری وضعیت سفارش"""
         order = get_object_or_404(self.get_queryset(), pk=pk)
         
-        # محاسبه تاریخ تخمینی تحویل (مثال ساده)
         estimated_delivery_timestamp = None
         if order.shipped_at:
             estimated_delivery_date = order.shipped_at + timezone.timedelta(days=3)
@@ -234,9 +215,6 @@ class OrderViewSet(viewsets.GenericViewSet):
 
 
 class CartViewSet(viewsets.GenericViewSet):
-    """
-    API endpoints for managing user shopping carts
-    """
     permission_classes = [permissions.IsAuthenticated]
     parser_classes = (MultiPartParser, FormParser) 
     pagination_class = None
@@ -244,7 +222,7 @@ class CartViewSet(viewsets.GenericViewSet):
     def get_serializer_class(self):
         if self.action == 'add_item':
             return CartItemAddSerializer
-        elif self.action == 'update_item': # This serializer currently only handles quantity
+        elif self.action == 'update_item':
             return CartItemUpdateSerializer
         elif self.action == 'checkout':
             return CheckoutSerializer
@@ -253,7 +231,6 @@ class CartViewSet(viewsets.GenericViewSet):
         return CartSerializer
     
     def get_queryset(self):
-        # Avoid error when generating Swagger docs
         if getattr(self, 'swagger_fake_view', False):
             return Cart.objects.none()
         return Cart.objects.filter(user=self.request.user)
@@ -267,7 +244,6 @@ class CartViewSet(viewsets.GenericViewSet):
     )
     @action(detail=False, methods=['get'], url_path='')
     def get_cart(self, request):
-        """دریافت سبد خرید کاربر"""
         cart, created = Cart.objects.get_or_create(user=request.user)
         serializer = CartSerializer(cart)
         return Response(serializer.data)
@@ -281,7 +257,6 @@ class CartViewSet(viewsets.GenericViewSet):
     )
     @action(detail=False, methods=['post'], url_path='items')
     def add_item(self, request):
-        """افزودن محصول به سبد خرید با در نظر گرفتن رنگ و سایز"""
         cart, created = Cart.objects.get_or_create(user=request.user)
         serializer = CartItemAddSerializer(data=request.data)
         
@@ -294,13 +269,11 @@ class CartViewSet(viewsets.GenericViewSet):
         size_id = serializer.validated_data.get('size_id')
         
         try:
-            # ابتدا محصول را بررسی می‌کنیم
             product = Product.objects.get(id=product_id)
         except Product.DoesNotExist:
             return Response({"status": "error", "message": "محصول یافت نشد."}, 
                         status=status.HTTP_404_NOT_FOUND)
         
-        # رنگ و سایز را اگر انتخاب شده، بررسی می‌کنیم
         selected_color_obj = None
         selected_size_obj = None
         
@@ -317,8 +290,6 @@ class CartViewSet(viewsets.GenericViewSet):
             except ProductSize.DoesNotExist:
                 return Response({"status": "error", "message": "سایز انتخاب شده برای این محصول موجود نیست."}, 
                             status=status.HTTP_400_BAD_REQUEST)
-        
-        # بررسی اینکه آیا این آیتم با رنگ و سایز مشخص در سبد خرید وجود دارد
         existing_item = None
         try:
             existing_item = CartItem.objects.get(
@@ -330,11 +301,9 @@ class CartViewSet(viewsets.GenericViewSet):
         except CartItem.DoesNotExist:
             pass
         
-        # محاسبه تعداد نهایی که در سبد خرید خواهد بود
         current_cart_quantity = existing_item.quantity if existing_item else 0
         final_quantity = current_cart_quantity + quantity
         
-        # بررسی موجودی انبار
         if final_quantity > product.stock:
             return Response({
                 "status": "error", 
@@ -342,11 +311,9 @@ class CartViewSet(viewsets.GenericViewSet):
             }, status=status.HTTP_400_BAD_REQUEST)
         
         if existing_item:
-            # اگر وجود داشت، تعداد آن را افزایش می‌دهیم
             existing_item.quantity = final_quantity
             existing_item.save(update_fields=['quantity', 'updated_at'])
         else:
-            # اگر وجود نداشت، یک آیتم جدید ایجاد می‌کنیم
             CartItem.objects.create(
                 cart=cart,
                 product=product,
@@ -359,18 +326,16 @@ class CartViewSet(viewsets.GenericViewSet):
         return Response(result_serializer.data)
     
     @swagger_auto_schema(
-        operation_summary="Update cart item quantity", # Clarified summary
+        operation_summary="Update cart item quantity", 
         operation_description="Update the quantity of a product in the cart. To change color/size, remove and re-add the item.",
-        request_body=CartItemUpdateSerializer, # This serializer only handles quantity
+        request_body=CartItemUpdateSerializer, 
         responses={200: CartSerializer()},
         tags=["Cart"]
     )
-    @action(detail=True, methods=['put'], url_path='items/(?P<item_id>[^/.]+)') # item_id here refers to CartItem ID
+    @action(detail=True, methods=['put'], url_path='items/(?P<item_id>[^/.]+)')
     def update_item(self, request, item_id=None, **kwargs):
-        """به‌روزرسانی تعداد یک آیتم مشخص در سبد خرید"""
-        # Note: item_id is the ID of the CartItem, which is unique for a product+color+size combination.
         cart, created = Cart.objects.get_or_create(user=request.user)
-        serializer = CartItemUpdateSerializer(data=request.data) # Only updates quantity
+        serializer = CartItemUpdateSerializer(data=request.data)
         
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -378,10 +343,7 @@ class CartViewSet(viewsets.GenericViewSet):
         quantity = serializer.validated_data['quantity']
         
         try:
-            # Get the specific CartItem instance
             item = CartItem.objects.get(id=item_id, cart=cart)
-            
-            # بررسی موجودی انبار
             if quantity > item.product.stock:
                 return Response({
                     "status": "error", 
@@ -405,9 +367,8 @@ class CartViewSet(viewsets.GenericViewSet):
         responses={200: CartSerializer()},
         tags=["Cart"]
     )
-    @action(detail=True, methods=['delete'], url_path='items/(?P<item_id>[^/.]+)') # item_id refers to CartItem ID
+    @action(detail=True, methods=['delete'], url_path='items/(?P<item_id>[^/.]+)')
     def remove_item(self, request, item_id=None, **kwargs):
-        """حذف محصول از سبد خرید"""
         cart, created = Cart.objects.get_or_create(user=request.user)
         
         try:
@@ -429,7 +390,6 @@ class CartViewSet(viewsets.GenericViewSet):
     )
     @action(detail=False, methods=['delete'], url_path='items')
     def clear_cart(self, request):
-        """پاک کردن تمام محصولات سبد خرید"""
         cart, created = Cart.objects.get_or_create(user=request.user)
         cart.items.all().delete()
         result_serializer = CartSerializer(cart)
@@ -444,7 +404,6 @@ class CartViewSet(viewsets.GenericViewSet):
     )
     @action(detail=False, methods=['post'], url_path='checkout')
     def checkout(self, request):
-        """تبدیل سبد خرید به سفارش با در نظر گرفتن رنگ و سایز"""
         cart, created = Cart.objects.get_or_create(user=request.user)
         serializer = CheckoutSerializer(data=request.data)
         
@@ -455,23 +414,20 @@ class CartViewSet(viewsets.GenericViewSet):
         payment_method = "credit card" 
         coupon_code = serializer.validated_data.get('coupon_code', '').strip()
         
-        cart_items = cart.items.all() # Renamed for clarity
+        cart_items = cart.items.all()
         if not cart_items:
             return Response(
                 {"status": "error", "message": "سبد خرید شما خالی است"}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # --- BEGIN STOCK CHECK ---
-        for cart_item_obj in cart_items: # Renamed for clarity
-            if cart_item_obj.product.stock < cart_item_obj.quantity: # Assuming stock is per product, not per variant
+        for cart_item_obj in cart_items: 
+            if cart_item_obj.product.stock < cart_item_obj.quantity:
                 return Response(
                     {"status": "error", "message": f"محصول '{cart_item_obj.product.name}' موجودی کافی ندارد."},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-        # --- END STOCK CHECK ---
         
-        # Recalculate subtotal based on cart items
         subtotal = sum(item.product.price * item.quantity for item in cart_items)
         total = subtotal 
         discount = Decimal('0.00')
@@ -499,7 +455,7 @@ class CartViewSet(viewsets.GenericViewSet):
                     else:
                         discount = calculated_discount
                     
-                    discount = min(discount, subtotal) # Ensure discount isn't more than subtotal
+                    discount = min(discount, subtotal) 
                     total = subtotal - discount
                     applied_coupon_object = coupon
             except Coupon.DoesNotExist:
@@ -513,11 +469,11 @@ class CartViewSet(viewsets.GenericViewSet):
                     payment_method=payment_method,
                     subtotal=subtotal,
                     discount=discount, 
-                    total=total, # Total is now calculated considering discount
+                    total=total,
                     promo_code=applied_coupon_object.code if applied_coupon_object and discount > 0 else None
                 )
                 
-                for cart_item_obj in cart_items: # Iterate through CartItem objects
+                for cart_item_obj in cart_items:
                     OrderItem.objects.create(
                         order=order,
                         product=cart_item_obj.product,
@@ -525,18 +481,13 @@ class CartViewSet(viewsets.GenericViewSet):
                         product_price=cart_item_obj.product.price,
                         quantity=cart_item_obj.quantity,
                         subtotal=cart_item_obj.product.price * cart_item_obj.quantity,
-                        # Save selected color and size names
                         selected_color_name=cart_item_obj.selected_color.name if cart_item_obj.selected_color else None,
                         selected_size_name=cart_item_obj.selected_size.name if cart_item_obj.selected_size else None
                     )
                     
-                    # --- BEGIN STOCK DEDUCTION ---
-                    # Assuming stock is managed per product, not per variant (color/size)
-                    # If stock is per variant, this logic needs to be more complex
                     product_to_update = cart_item_obj.product
                     product_to_update.stock -= cart_item_obj.quantity
                     product_to_update.save(update_fields=['stock'])
-                    # --- END STOCK DEDUCTION ---
 
                 if applied_coupon_object and discount > 0:
                     applied_coupon_object.used_count += 1
@@ -557,9 +508,8 @@ class CartViewSet(viewsets.GenericViewSet):
         responses={200: CartSerializer()},
         tags=["Cart"]
     )
-    @action(detail=True, methods=['post'], url_path='items/(?P<item_id>[^/.]+)/decrease') # item_id refers to CartItem ID
+    @action(detail=True, methods=['post'], url_path='items/(?P<item_id>[^/.]+)/decrease') 
     def decrease_item_quantity(self, request, item_id=None, **kwargs):
-        """کم کردن تعداد یک محصول در سبد خرید"""
         cart, created = Cart.objects.get_or_create(user=request.user)
         serializer = CartItemQuantitySerializer(data=request.data)
 
@@ -575,7 +525,6 @@ class CartViewSet(viewsets.GenericViewSet):
                 item.quantity -= decrease_by
                 item.save()
             else:
-                # اگر تعداد کم شده بیشتر یا مساوی تعداد فعلی باشد، آیتم را حذف کن
                 item.delete()
                 
             result_serializer = CartSerializer(cart)
@@ -587,9 +536,6 @@ class CartViewSet(viewsets.GenericViewSet):
             )
 
 class CouponViewSet(viewsets.GenericViewSet):
-    """
-    API endpoints for managing discount coupons
-    """
     permission_classes = [permissions.IsAuthenticated]
     parser_classes = (MultiPartParser, FormParser) 
     pagination_class = None
@@ -615,7 +561,6 @@ class CouponViewSet(viewsets.GenericViewSet):
     )
     @action(detail=False, methods=['post'], url_path='validate')
     def validate(self, request):
-        """اعتبارسنجی کد تخفیف"""
         serializer = CouponValidateSerializer(data=request.data)
         
         if not serializer.is_valid():
@@ -645,12 +590,11 @@ class CouponViewSet(viewsets.GenericViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
             
-        # Calculate the actual discount if cart_total is provided
         discount_amount = 0
         if cart_total > 0:
             if coupon.is_percentage:
                 discount_amount = cart_total * (coupon.amount / 100)
-            else:  # fixed amount
+            else:
                 discount_amount = min(coupon.amount, cart_total)
         
         response_data = {
@@ -674,7 +618,6 @@ class CouponViewSet(viewsets.GenericViewSet):
     )
     @action(detail=False, methods=['post'], url_path='apply')
     def apply_to_cart(self, request):
-        """اعمال کد تخفیف روی سبد خرید"""
         serializer = CouponValidateSerializer(data=request.data)
         
         if not serializer.is_valid():
@@ -682,7 +625,6 @@ class CouponViewSet(viewsets.GenericViewSet):
             
         code = serializer.validated_data['code']
         
-        # Get the user's cart
         try:
             cart = Cart.objects.get(user=request.user)
         except Cart.DoesNotExist:
@@ -691,7 +633,6 @@ class CouponViewSet(viewsets.GenericViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
         
-        # Validate coupon
         try:
             coupon = Coupon.objects.get(code=code, is_active=True)
         except Coupon.DoesNotExist:
@@ -713,17 +654,13 @@ class CouponViewSet(viewsets.GenericViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Calculate cart total
         items = cart.items.all()
         cart_total = sum(item.product.price * item.quantity for item in items)
-        
-        # Calculate discount
         if coupon.is_percentage:
             discount_amount = cart_total * (coupon.amount / 100)
-        else:  # fixed amount
+        else: 
             discount_amount = min(coupon.amount, cart_total)
         
-        # Return discount information
         return Response({
             "valid": True,
             "coupon": CouponSerializer(coupon).data,

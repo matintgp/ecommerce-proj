@@ -16,7 +16,6 @@ class UserSerializer(serializers.ModelSerializer):
         return user
         
     def update(self, instance, validated_data):
-        # جلوگیری از تغییر پسورد با متد عادی update
         password = validated_data.pop('password', None)
         user = super().update(instance, validated_data)
         
@@ -39,7 +38,6 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         }
     
     def update(self, instance, validated_data):
-        # جلوگیری از تغییر پسورد با متد عادی update
         password = validated_data.pop('password', None)
         user = super().update(instance, validated_data)
         
@@ -84,7 +82,6 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         email = data.get('email')
         otp_code = data.get('otp_code')
         
-        # بررسی معتبر بودن کد OTP
         try:
             print("Checking OTP validity...")
             print(f"Email: {email}, OTP Code: {otp_code}")

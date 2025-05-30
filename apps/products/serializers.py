@@ -50,7 +50,7 @@ class ReviewSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Review
-        fields = ['id', 'product', 'user_email', 'rating', 'title', 'comment', 'created_at', 'is_approved']  # اضافه کردن product
+        fields = ['id', 'product', 'user_email', 'rating', 'title', 'comment', 'created_at', 'is_approved']  
         read_only_fields = ['id', 'user_email', 'created_at', 'is_approved']
 
     def validate(self, data):
@@ -76,7 +76,7 @@ class ProductSerializer(serializers.ModelSerializer):
     brand = BrandSerializer(read_only=True)
     gender = GenderSerializer(read_only=True)
     sizes = SizeSerializer(many=True, read_only=True, source='size')
-    colors = ColorSerializer(many=True, read_only=True, source='color') # اطمینان از اینکه source='color' صحیح است
+    colors = ColorSerializer(many=True, read_only=True, source='color') 
     specifications = SpecificationSerializer(many=True, read_only=True)
     images = ProductImageSerializer(many=True, read_only=True)
 
@@ -103,9 +103,7 @@ class ProductSerializer(serializers.ModelSerializer):
         except (ValueError, TypeError):
             pass
         
-        # فیلتر کردن نظرات برای نمایش فقط نظرات تایید شده
         approved_reviews = instance.reviews.filter(is_approved=True)
-        # اطمینان از اینکه context به ReviewSerializer پاس داده می‌شود اگر نیاز به request در آنجا هم باشد
         data['reviews'] = ReviewSerializer(approved_reviews, many=True, context=self.context).data
         
         return data
@@ -116,17 +114,16 @@ class ProductSerializer(serializers.ModelSerializer):
             'id', 'name', 'slug', 'description', 'price', 'stock', 'is_active', 
             'category', 'category_id', 'brand', 'gender', 'sizes', 'colors', 
             'specifications', 'images', 'created_at', 'updated_at',
-            'reviews', 'average_rating', 'is_in_wishlist' # اضافه کردن فیلدهای جدید به اینجا
+            'reviews', 'average_rating', 'is_in_wishlist' 
         ]
         read_only_fields = [
             'id', 'slug', 'created_at', 'updated_at', 
-            'reviews', 'average_rating', 'is_in_wishlist' # اضافه کردن فیلدهای جدید به اینجا نیز
+            'reviews', 'average_rating', 'is_in_wishlist' 
         ]
         
 
 
 class WishlistCreateSerializer(serializers.ModelSerializer):
-    """سریالایزر برای ایجاد آیتم wishlist"""
     class Meta:
         model = Wishlist
         fields = ['product']
@@ -141,7 +138,6 @@ class WishlistCreateSerializer(serializers.ModelSerializer):
         return data
 
 class WishlistSerializer(serializers.ModelSerializer):
-    """سریالایزر برای نمایش wishlist"""
     product_details = ProductSerializer(source='product', read_only=True)
     
     class Meta:

@@ -12,14 +12,11 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from drf_yasg.generators import OpenAPISchemaGenerator
 
 
-from .views import home
+# from .views import home
 
 
 
-# class CustomOpenAPISchemaGenerator(OpenAPISchemaGenerator):
-#     def get_schema(self, request=None, public=False):
-#         schema = super().get_schema(request, public)
-#         return schema
+
 
 schema_view = get_schema_view(
    openapi.Info(
@@ -44,13 +41,11 @@ urlpatterns = [
     path('api/accounts/', include('apps.accounts.urls')),
     path('api/products/', include('apps.products.urls')),
     path('api/orders/', include('apps.orders.urls')),
-    path('', home),
+   #  path('', home),
     
-    # Add login URLs
     path('accounts/login/', auth_views.LoginView.as_view(template_name='admin/login.html'), name='login'),
     path('accounts/logout/', auth_views.LogoutView.as_view(), name='logout'),
     
-    # Swagger URLs - no authentication required
     path('api-auth/', include('rest_framework.urls')),
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
     path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
