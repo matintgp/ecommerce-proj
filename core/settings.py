@@ -2,7 +2,9 @@ import os
 from pathlib import Path
 from datetime import timedelta
 from django.conf import settings
+import ssl
 
+ssl._create_default_https_context = ssl._create_unverified_context
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -234,6 +236,8 @@ EMAIL_USE_SSL = False
 EMAIL_TIMEOUT = 60 
 EMAIL_SSL_CERTFILE = None
 EMAIL_SSL_KEYFILE = None
+EMAIL_SSL_CHECK_HOSTNAME = False
+EMAIL_SSL_VERIFY_MODE = ssl.CERT_NONE
 
 if not DEBUG:
     CSRF_COOKIE_SECURE = True
