@@ -9,12 +9,9 @@ class CustomEmailBackend(BaseEmailBackend):
         """
         if self.connection:
             return False
-        
-        # دریافت تنظیمات از parent class
         connection_params = self._get_connection_params()
         
         try:
-            # ایجاد اتصال SMTP
             self.connection = smtplib.SMTP(
                 self.host, 
                 self.port, 
@@ -22,11 +19,9 @@ class CustomEmailBackend(BaseEmailBackend):
                 local_hostname=connection_params.get('local_hostname')
             )
             
-            # اگر TLS فعال است
             if self.use_tls:
                 self.connection.ehlo()
                 
-                # ایجاد SSL context امن
                 context = ssl.create_default_context()
                 context.check_hostname = False
                 context.verify_mode = ssl.CERT_NONE
@@ -34,7 +29,6 @@ class CustomEmailBackend(BaseEmailBackend):
                 self.connection.starttls(context=context)
                 self.connection.ehlo()
             
-            # احراز هویت
             if self.username and self.password:
                 self.connection.login(self.username, self.password)
                 
@@ -46,14 +40,11 @@ class CustomEmailBackend(BaseEmailBackend):
             return False
     
     def _get_connection_params(self):
-        """دریافت پارامترهای اتصال"""
         params = {}
         
-        # timeout
         if hasattr(self, 'timeout') and self.timeout is not None:
             params['timeout'] = self.timeout
         
-        # local_hostname
         if hasattr(self, 'local_hostname') and self.local_hostname is not None:
             params['local_hostname'] = self.local_hostname
         
