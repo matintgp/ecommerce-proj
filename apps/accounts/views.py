@@ -74,7 +74,7 @@ class UserViewSet(viewsets.GenericViewSet):
         otp = EmailOTP(email=email)
         otp.save()
         
-        print(f"[+++]  Generated OTP: {otp.otp_code}  [+++]") # Debug 
+        print(f"[+++] Generated OTP: {otp.otp_code} for {email} [+++]")
         
         subject = 'کد تایید ایمیل'
         message = f'کد تایید شما: {otp.otp_code}\nاین کد تا 10 دقیقه معتبر است.'
@@ -82,12 +82,42 @@ class UserViewSet(viewsets.GenericViewSet):
         recipient_list = [email]
         
         try:
-            send_mail(subject, message, from_email, recipient_list)
-            return Response(
-                {"message": "کد تایید با موفقیت به ایمیل شما ارسال شد", "email": email},
-                status=status.HTTP_200_OK
+            print(f"(for DEBUG) From: {from_email}")
+            print(f"(for DEBUG) To: {recipient_list}")
+            print(f"(for DEBUG) Subject: {subject}")
+            print(f"(for DEBUG) Email settings:")
+            print(f"  - EMAIL_HOST: {settings.EMAIL_HOST}")
+            print(f"  - EMAIL_PORT: {settings.EMAIL_PORT}")
+            print(f"  - EMAIL_USE_TLS: {settings.EMAIL_USE_TLS}")
+            print(f"  - EMAIL_HOST_USER: {settings.EMAIL_HOST_USER}")
+            
+            result = send_mail(
+                subject=subject, 
+                message=message, 
+                from_email=from_email, 
+                recipient_list=recipient_list,
+                fail_silently=False  
             )
+                        
+            if result == 1:
+                print(f"[succes] Email sent successfully to {email}")
+                return Response(
+                    {"message": "کد تایید با موفقیت به ایمیل شما ارسال شد", "email": email},
+                    status=status.HTTP_200_OK
+                )
+            else:
+                print(f"--- [ERROR] send_mail returned {result} (should be 1)")
+                return Response(
+                    {"error": "خطا در ارسال ایمیل"},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+                
         except Exception as e:
+            print(f"--- [ERROR] Exception in sending email: {str(e)}")
+            print(f"--- [ERROR] Exception type: {type(e).__name__}")
+            import traceback
+            traceback.print_exc()
+            
             return Response(
                 {"error": f"خطا در ارسال ایمیل: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR

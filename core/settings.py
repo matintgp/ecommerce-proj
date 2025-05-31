@@ -222,6 +222,7 @@ CORS_ALLOW_HEADERS = [
     'x-requested-with',
 ]
 
+
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
@@ -229,7 +230,8 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'mtt584388@gmail.com'  
 EMAIL_HOST_PASSWORD = 'chcz rdmz qhtn natj'
 DEFAULT_FROM_EMAIL = 'mtt584388@gmail.com'
-
+EMAIL_USE_SSL = False  
+EMAIL_TIMEOUT = 60 
 
 if not DEBUG:
     CSRF_COOKIE_SECURE = True
