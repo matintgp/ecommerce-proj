@@ -10,7 +10,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = 'django-insecure-4@#)6&!$@^@!3g1v2z5j0x7q8h3b9z1&*4$@!3g1v2z5j0x7q8h3b9z1&*4$@!3g1v2z5j0x7q8h3b9z1&*4$@!3g1v2z5j0x7q8h3b9z1&*4$@!3g1v2z5j0x7q8h3b9z1&*4$@!3g1v2z5j0x7q8h3b9z1&*4$@!3g1v2z5j0x7q8h3b9z1&*4$@!3g1v2z5j0x7q8h3b9z1&*4$@!3g1v2z5j0x7q8h3b9z1&*4$@!3g1v2z5j0x7q8h3b9z1&*4$@!3g1v2z5j0x7q8h3b9z1&*4$@!'
 
-DEBUG = True # TODO: yadam nare True konam
+DEBUG = True # TODO: yadam nare False konam
 
 ALLOWED_HOSTS = []
 
@@ -238,6 +238,8 @@ EMAIL_SSL_CERTFILE = None
 EMAIL_SSL_KEYFILE = None
 EMAIL_SSL_CHECK_HOSTNAME = False
 EMAIL_SSL_VERIFY_MODE = ssl.CERT_NONE
+
+
 
 if not DEBUG:
     CSRF_COOKIE_SECURE = True
