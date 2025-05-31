@@ -19,7 +19,7 @@ class CustomEmailBackend(BaseEmailBackend):
                 local_hostname=connection_params.get('local_hostname')
             )
             
-            if self.use_tls:
+            if self.use_tls:    
                 self.connection.ehlo()
                 
                 context = ssl.create_default_context()
