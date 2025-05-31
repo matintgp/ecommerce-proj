@@ -234,10 +234,17 @@ EMAIL_HOST_PASSWORD = 'chcz rdmz qhtn natj'
 DEFAULT_FROM_EMAIL = 'mtt584388@gmail.com'
 EMAIL_USE_SSL = False  
 EMAIL_TIMEOUT = 60 
+# for macOS debugging
 EMAIL_SSL_CERTFILE = None
 EMAIL_SSL_KEYFILE = None
 EMAIL_SSL_CHECK_HOSTNAME = False
-EMAIL_SSL_VERIFY_MODE = ssl.CERT_NONE
+
+import platform
+if platform.system() == 'Darwin':  # macOS
+    EMAIL_SSL_VERIFY_MODE = ssl.CERT_NONE
+else:
+    EMAIL_SSL_VERIFY_MODE = ssl.CERT_REQUIRED
+
 
 if not DEBUG:
     CSRF_COOKIE_SECURE = True
