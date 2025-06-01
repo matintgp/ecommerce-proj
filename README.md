@@ -40,3 +40,4 @@ steps for start project in ur system:
 
 
 The server will start at http://localhost:8000
+Swagger Doc: http://127.0.0.1:8000/swagger/
